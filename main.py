@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 from pfm.fitScanPFM import fitScanPFM
+from pfm.plotter import plot_amplitude, plot_params, plot_phase, plot_piezo
 
 # from pfm.plotter import plot_params, plot_piezo
 from pfm.process import process_all_data
@@ -32,4 +33,10 @@ logging.basicConfig(
 
 data_path = Path("data")
 results_path = Path("results")
-process_all_data(data_path, results_path)
+functions_to_apply = [
+    plot_params,
+    plot_piezo,
+    plot_phase,
+    plot_amplitude,
+]
+process_all_data(data_path, results_path, functions_to_apply)
