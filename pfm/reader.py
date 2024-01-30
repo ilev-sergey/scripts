@@ -36,9 +36,6 @@ def get_data(path):
     rows = pfm.variables["waveform"].shape[0] - 1
     cols = pfm.variables["waveform"].shape[1]
 
-    # print(pfm.variables["waveform"].shape)
-    # print(afam.variables["waveform"][0, 0, :, 0])
-
     scan_pfm = []
     scan_afam = []
     frequencies = []
@@ -73,7 +70,7 @@ def get_data(path):
         "cal_pfm": np.array(calibrations_pfm),
         "cal_afam": np.array(calibrations_afam),
         "frequencies": np.array(frequencies),
-        "metadata": {"new_version": new_version},  # parse_filename(path.name) |
+        "metadata": {"new_version": new_version},
     }
 
 

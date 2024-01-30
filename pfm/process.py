@@ -6,7 +6,6 @@ from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 from pfm.fitScanPFM import fitScanPFM
-from pfm.plotter import plot_amplitude, plot_params, plot_phase, plot_piezo
 from pfm.reader import get_data
 
 

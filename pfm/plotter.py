@@ -16,7 +16,6 @@ def plot_map(
 ):
     vmin = vmin or np.quantile(data, quantiles[0])
     vmax = vmax or np.quantile(data, quantiles[1])
-    # data = np.clip(data, min_quant, max_quant)
     image = ax.imshow(
         data,
         cmap=cmap,
@@ -25,7 +24,8 @@ def plot_map(
         vmin=vmin,
         vmax=vmax,
     )
-    ax.set_title(title)
+    if title:
+        ax.set_title(title)
 
     # disable ticks and labels
     ax.tick_params(
@@ -83,12 +83,7 @@ def plot_amplitude(results, path: Path):
 def plot_params(results, path):
     Path.mkdir(path, parents=True, exist_ok=True)
 
-    plt.rcParams.update(
-        {
-            "font.size": 14,
-            # "font.family": "Myriad",
-        }
-    )
+    plt.rcParams.update({"font.size": 14})
 
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
@@ -119,20 +114,13 @@ def plot_params(results, path):
 def plot_piezo(results, path, include_displ=False):
     Path.mkdir(path, parents=True, exist_ok=True)
 
-    plt.rcParams.update(
-        {
-            "font.size": 14,
-        }
-    )
+    plt.rcParams.update({"font.size": 14})
 
     fig, axs = plt.subplots(1, 2, figsize=(25, 10))
-    # fig, axs = plt.subplots(1, 2)
 
-    # Subplot 1
     piezomodule = np.abs(results["piezomodule"])
     plot_map(fig, axs[0], piezomodule, title="Piezomodule (pm/V)")
 
-    # Subplot 2
     D33 = piezomodule.flatten()
     mean_D33 = round(np.mean(D33), 3)
     std_D33 = round(np.std(D33), 3)
@@ -149,11 +137,9 @@ def plot_piezo(results, path, include_displ=False):
     axs[1].plot(x, p, "k", linewidth=2)
 
     if include_displ:
-        # Subplot 1
         displacement = np.abs(results["displacement"])
         plot_map(fig, axs[1, 0], displacement, title="Low-frequency displacement [pm]")
 
-        # Subplot 2
         mean_displ = round(np.mean(displacement), 3)
         std_displ = round(np.std(displacement), 3)
 

@@ -56,24 +56,6 @@ def fitScanPFM(scan_pfm, cal_pfm, metadata, fc=0.62e6, fspan=195312.5, **kwargs)
             results["piezomodule"][nxCurve, nyCurve] = piezomodule
             results["s0"][nxCurve, nyCurve] = s0
 
-            if abs(results["A"][nxCurve, nyCurve]) > 4.7e6:
-                results["large"][nxCurve, nyCurve] = results["A"][nxCurve, nyCurve]
-            else:
-                results["large"][nxCurve, nyCurve] = 0
-
-    amplitude = np.nanmean(np.abs(results["A"]))
-    B = np.abs(results["A"]).flatten()
-    stdB = np.std(B)
-    phase = np.nanmean(np.angle(results["A"]))
-
-    D33 = results["piezomodule"].flatten()
-    mean_D33 = np.mean(D33)
-    std_D33 = np.std(D33)
-
-    Displacement = results["displacement"].flatten()
-    mean_Displacement = np.mean(Displacement)
-    std_Displacement = np.std(Displacement)
-
     logging.info("fitting is done")
 
     return results
