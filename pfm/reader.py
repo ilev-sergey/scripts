@@ -1,11 +1,12 @@
 import logging
 from datetime import datetime
+from pathlib import Path
 
-import netCDF4
+import netCDF4  # type: ignore
 import numpy as np
 
 
-def get_data(path):
+def get_data(path: Path | str):
     logging.info(f"loading data from {path}")
 
     dataset = netCDF4.Dataset(path, "r", format="NETCDF4")
@@ -41,7 +42,7 @@ def get_data(path):
     frequencies = []
     for row in range(rows):
         pfmcol = []
-        afamcol = []
+        afamcol: list[complex] = []
         freqcol = []
         for col in range(cols):
             datareal_pfm = pfm.variables["waveform"][row, col, :, 0]

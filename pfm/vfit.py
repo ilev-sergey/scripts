@@ -1,11 +1,11 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt  # type: ignore
 
 
-def vfit(fs, data, doPlot=False):
-    def iter(pguess, s, data):
+def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
+    def iter(pguess, s: NDArray, data: NDArray):
         pguess = (
             [pguess]
             if type(pguess) == np.complex128 or type(pguess) == np.float64

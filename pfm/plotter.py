@@ -1,18 +1,27 @@
 import logging
 from pathlib import Path
+from typing import Any
 
-import cmocean
+import cmocean  # type: ignore
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import mpl_toolkits.axes_grid1
+import mpl_toolkits.axes_grid1  # type: ignore
 import numpy as np
-from scipy.stats import norm
+from numpy.typing import NDArray
+from scipy.stats import norm  # type: ignore
 
 # TODO: add typehints
 
 
 def plot_map(
-    fig, ax, data, title=None, vmin=None, vmax=None, quantiles=(0.05, 0.95), cmap="grey"
+    fig: mpl.figure.Figure,
+    ax: mpl.axes.Axes,
+    data: NDArray,
+    title: str | None = None,
+    vmin: float | None = None,
+    vmax: float | None = None,
+    quantiles: tuple[float, float] = (0.05, 0.95),
+    cmap: Any = "grey",
 ):
     vmin = vmin or np.quantile(data, quantiles[0])
     vmax = vmax or np.quantile(data, quantiles[1])
@@ -49,7 +58,7 @@ def plot_map(
     fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
 
 
-def plot_phase(results, path: Path):
+def plot_phase(results: dict, path: Path):
     Path.mkdir(path, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
@@ -70,7 +79,7 @@ def plot_phase(results, path: Path):
     plt.close(fig)
 
 
-def plot_amplitude(results, path: Path):
+def plot_amplitude(results: dict, path: Path):
     Path.mkdir(path, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
@@ -80,7 +89,7 @@ def plot_amplitude(results, path: Path):
     plt.close(fig)
 
 
-def plot_params(results, path):
+def plot_params(results: dict, path: Path):
     Path.mkdir(path, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})
@@ -111,7 +120,7 @@ def plot_params(results, path):
     logging.info(f"params are plotted,  path: {path}")
 
 
-def plot_piezo(results, path, include_displ=False):
+def plot_piezo(results: dict, path: Path, include_displ: bool = False):
     Path.mkdir(path, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})

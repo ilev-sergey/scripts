@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -9,7 +10,9 @@ from pfm.fitScanPFM import fitScanPFM
 from pfm.reader import get_data
 
 
-def process_all_data(data_path: Path, results_path: Path, functions):
+def process_all_data(
+    data_path: Path, results_path: Path | str, functions: list[Callable]
+):
     pathlist = data_path.glob("**/*.nc")
     for file in pathlist:
         path = Path(results_path, Path(*file.parts[1:-1]) / file.stem)
@@ -42,7 +45,7 @@ def get_domains_distribution(results_path: Path):
     return np.array(shares)
 
 
-def save_results(results, path: Path):  # TODO: move to another file
+def save_results(results: NDArray, path: Path | str):  # TODO: move to another file
     Path.mkdir(path, parents=True, exist_ok=True)
 
     phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
@@ -60,7 +63,7 @@ def save_results(results, path: Path):  # TODO: move to another file
     logging.info("data with fitting results is saved")
 
 
-def is_processed(results_path):  # TODO: pass datafile, not results path
+def is_processed(results_path: Path | str):  # TODO: pass datafile, not results path
     return Path(results_path, "phase.npy").exists()
 
 

@@ -1,12 +1,20 @@
 import logging
 
 import numpy as np
-from scipy.fft import fft
+from numpy.typing import NDArray
+from scipy.fft import fft  # type: ignore
 
 from pfm.vfit import vfit
 
 
-def fitScanPFM(scan_pfm, cal_pfm, metadata, fc=0.62e6, fspan=195312.5, **kwargs):
+def fitScanPFM(
+    scan_pfm: NDArray,
+    cal_pfm: NDArray,
+    metadata: dict,
+    fc: float = 0.62e6,
+    fspan: float = 195312.5,
+    **kwargs: NDArray
+):
     logging.info("starting fitting process...")
 
     sizex, sizey = scan_pfm.shape[:2]
