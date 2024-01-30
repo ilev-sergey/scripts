@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from numpy.typing import NDArray
 from scipy.fft import fft  # type: ignore
+from tqdm import trange  # type: ignore
 
 from pfm.vfit import vfit
 
@@ -43,7 +44,7 @@ def fitScanPFM(
     else:
         HLEN = 510
 
-    for nyCurve in range(sizey):
+    for nyCurve in trange(sizey, desc="progress"):
         for nxCurve in range(sizex):
             indata = scan_pfm[nxCurve, nyCurve, :]
             indata = fft(indata)

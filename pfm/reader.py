@@ -4,6 +4,7 @@ from pathlib import Path
 
 import netCDF4  # type: ignore
 import numpy as np
+from tqdm import trange  # type: ignore
 
 
 def get_data(path: Path | str):
@@ -40,7 +41,7 @@ def get_data(path: Path | str):
     scan_pfm = []
     scan_afam = []
     frequencies = []
-    for row in range(rows):
+    for row in trange(rows, desc="progress"):
         pfmcol = []
         afamcol: list[complex] = []
         freqcol = []
@@ -71,24 +72,24 @@ def get_data(path: Path | str):
         "cal_pfm": np.array(calibrations_pfm),
         "cal_afam": np.array(calibrations_afam),
         "frequencies": np.array(frequencies),
-        "metadata": {"new_version": new_version},
+        "metadata": {"new_version": new_version},  # | vars(dataset),
     }
 
 
-def parse_filename(filename: str):
-    filename = str(filename)
-    filename, ext = filename.split(".")
-    temp = filename.split(" ", 1)
-    dt, comment = temp, "" if len(temp) == 1 else temp
-    (
-        _,
-        year,
-        month,
-        day,
-        _,
-        hours,
-        minutes,
-        seconds,
-    ) = dt.split("_")
-    dt = datetime(year, month, day, hours, minutes, seconds)
-    return {"datetime": dt, "comment": comment}
+# def parse_filename(filename: str):
+#     filename = str(filename)
+#     filename, ext = filename.split(".")
+#     temp = filename.split(" ", 1)
+#     dt, comment = temp, "" if len(temp) == 1 else temp
+#     (
+#         _,
+#         year,
+#         month,
+#         day,
+#         _,
+#         hours,
+#         minutes,
+#         seconds,
+#     ) = dt.split("_")
+#     dt = datetime(year, month, day, hours, minutes, seconds)
+#     return {"datetime": dt, "comment": comment}
