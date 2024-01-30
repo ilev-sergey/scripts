@@ -76,20 +76,23 @@ def get_data(path: Path | str):
     }
 
 
-# def parse_filename(filename: str):
-#     filename = str(filename)
-#     filename, ext = filename.split(".")
-#     temp = filename.split(" ", 1)
-#     dt, comment = temp, "" if len(temp) == 1 else temp
-#     (
-#         _,
-#         year,
-#         month,
-#         day,
-#         _,
-#         hours,
-#         minutes,
-#         seconds,
-#     ) = dt.split("_")
-#     dt = datetime(year, month, day, hours, minutes, seconds)
-#     return {"datetime": dt, "comment": comment}
+def parse_filename(filename: str):
+    filename = str(filename)
+    filename, ext = filename.rsplit(".", 1)
+    lst = filename.split(" ", 1)
+    if len(lst) == 1:
+        dt, comment = *lst, ""
+    else:
+        dt, comment = lst
+    (
+        _,
+        year,
+        month,
+        day,
+        _,
+        hours,
+        minutes,
+        seconds,
+    ) = [int(elem) for elem in dt.split("_")]
+    dt_obj = datetime(year, month, day, hours, minutes, seconds)
+    return {"datetime": dt_obj, "comment": comment}
