@@ -1,6 +1,10 @@
 data/
 results/
 parameters.txt
+*.png
+test.py
+notebook.ipynb
+grain processor
 
 __pycache__/
 .ipynb_checkpoints
