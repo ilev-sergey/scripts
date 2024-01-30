@@ -84,8 +84,40 @@ def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
         plt.plot(fs, abs(dfilt) * 2, "k")
         plt.plot(mfs, abs(resp) * 2, "r.")
 
-        # ... Remaining plotting code ...
+        plt.subplot(3, 2, 2)
+        plt.plot(fs, np.angle(data), "c", label="data")
+        plt.plot(fs, np.angle(dfilt), "k", label="dfilt")
+        plt.plot(mfs, np.unwrap(np.angle(resp)), "r.", label="resp")
+        plt.legend()
 
+        plt.subplot(3, 2, 5)
+        plt.title("Abs(Resp - D - s*h)")
+        plt.plot(fs, np.abs(data - D - ms * h) * 2, "g", label="data")
+        plt.plot(fs, np.abs(dfilt - D - ms * h) * 2, "k", label="dfilt")
+        plt.plot(fs, np.abs(resp - D - ms * h) * 2, "r.", label="resp")
+        plt.legend()
+
+        plt.subplot(3, 2, 6)
+        plt.title("angle(Resp - D - s*h)")
+        plt.plot(fs, np.angle(data - D - ms * h), "c", label="data")
+        plt.plot(fs, np.angle(dfilt - D - ms * h), "k", label="dfilt")
+        plt.plot(fs, np.angle(resp - D - ms * h), "r.", label="resp")
+        plt.legend()
+
+        plt.subplot(3, 2, 3)
+        plt.plot(mfs, np.real(resp), "m", label="resp")
+        plt.plot(fs, np.real(data), "b", label="data")
+        plt.legend()
+
+        plt.subplot(3, 2, 4)
+        plt.plot(mfs, np.imag(resp), "m", label="resp")
+        plt.plot(fs, np.imag(data), "b", label="data")
+        plt.legend()
+
+        delay = 0.5
+        plt.ion()  # enable interactive plotting
+        plt.pause(delay)  # pause between plots
+        plt.clf()  # clear previous results
         plt.show()
 
     return A, s0, D, h, maxresp, displacement, piezomodule
