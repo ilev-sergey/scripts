@@ -5,21 +5,12 @@ from scipy.signal import butter, filtfilt  # type: ignore
 
 
 def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
-    def iter(pguess, s: NDArray, data: NDArray):
-        pguess = (
-            [pguess]
-            if type(pguess) == np.complex128 or type(pguess) == np.float64
-            else pguess
-        )
+    def iter(pole: complex, s: NDArray, data: NDArray):
+        real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
+        imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
 
-        lhs = np.zeros((len(fs), 4 * len(pguess) + 2), dtype=complex)
-        for i, pole in enumerate(pguess):
-            real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
-            imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
-
-            lhs[:, 4 * i : 4 * i + 4] = np.column_stack(
-                (real, imag, -data * real, -data * imag)
-            )
+        lhs = np.zeros((len(fs), 4 + 2), dtype=complex)
+        lhs[:, :4] = np.column_stack((real, imag, -data * real, -data * imag))
         lhs[:, -2] = 1
         lhs[:, -1] = s
         lhs = np.vstack((np.real(lhs), np.imag(lhs)))
@@ -28,7 +19,7 @@ def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
         rhs = np.concatenate((np.real(rhs), np.imag(rhs)))
         res = np.linalg.pinv(lhs) @ rhs
 
-        p_real, p_imag = np.real(pguess), np.imag(pguess)
+        p_real, p_imag = np.real(pole), np.imag(pole)
         arr1 = np.array([[p_real, p_imag], [-p_imag, p_real]]).reshape(2, 2)
         arr2 = np.array([[2, 0]]).reshape(2, 1)
         arr3 = res[2:4].reshape(1, 2)
@@ -43,15 +34,14 @@ def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
 
     s = 1j * fs
     fc = np.mean(fs)
-    pguess = [-fc / 100 + 1j * fc]
-    s0 = pguess
+    s0 = [-fc / 100 + 1j * fc]
 
     niters = 30
     fb, fa = butter(8, 0.1)
     dfilt = filtfilt(fb, fa, data, padlen=3 * (max(len(fb), len(fa)) - 1))
 
     for _ in range(niters):
-        s0, c, D, h = iter(pguess=s0, s=s, data=dfilt)
+        s0, c, D, h = iter(pole=s0, s=s, data=dfilt)
         s0 = s0[0]
 
     Avg = 70
@@ -69,10 +59,10 @@ def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
     displacement = maxresp * sensitivity / (Avg * Q)
     piezomodule = maxresp * sensitivity / (Avg * Q * volts_in_bin)
 
-    mfs = fs
-    ms = 1j * mfs
-
     if doPlot:
+        mfs = fs
+        ms = 1j * mfs
+
         modfun = lambda s: (c / (s - s0) + c / (s - np.conj(s0)) + D + h * s)
         resp = np.array([modfun(si) for si in ms])
 

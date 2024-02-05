@@ -9,12 +9,10 @@ from tqdm import trange  # type: ignore
 
 def get_data(path: Path | str):
     logging.info(f"loading data from {path}")
-
     dataset = netCDF4.Dataset(path, "r", format="NETCDF4")
 
     with open("parameters" + ".txt", "w") as file:
         file.write(str(dataset) + "\n")
-
     logging.info("\tparameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
