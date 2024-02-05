@@ -37,7 +37,6 @@ def fitScanPFM(
     ]
 
     results = {key: np.full((sizex, sizey), np.nan, dtype="complex_") for key in keys}
-    results["data"] = np.full((sizex, sizey, 1022), np.nan, dtype="complex_")
 
     if metadata["new_version"]:
         HLEN = 126  # Number of frequency bins
