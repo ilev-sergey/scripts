@@ -74,6 +74,12 @@ def get_data(path: Path | str):
     }
 
 
+def load_results(results_filename: Path | str):
+    results = np.load(results_filename, allow_pickle=True).item()
+    logging.info(f"loaded cached results from {results_filename}")
+    return results
+
+
 def parse_filename(filename: str):
     filename = str(filename)
     filename, ext = filename.rsplit(".", 1)

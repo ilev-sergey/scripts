@@ -7,19 +7,22 @@ from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 from pfm.fitScanPFM import fitScanPFM
-from pfm.reader import get_data
+from pfm.reader import get_data, load_results
 
 
 def process_all_data(
-    data_path: Path, results_path: Path | str, functions: list[Callable]
+    data_path: Path, results_path: Path | str, functions: list[Callable], cache=False
 ):
     pathlist = data_path.glob("**/*.nc")
     for file in pathlist:
         file_path = Path(
             results_path, *(file.relative_to(data_path).parts[:-1]), file.stem
         )
-        data = get_data(file)
-        results = fitScanPFM(**data)
+        if cache and (file_path / "results.npy").exists():
+            results = load_results(file_path / "results.npy")
+        else:
+            data = get_data(file)
+            results = fitScanPFM(**data)
         for function in functions:
             function(results, file_path)
 
