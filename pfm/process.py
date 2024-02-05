@@ -15,11 +15,13 @@ def process_all_data(
 ):
     pathlist = data_path.glob("**/*.nc")
     for file in pathlist:
-        path = Path(results_path, Path(*file.parts[1:-1]) / file.stem)
+        file_path = Path(
+            results_path, *(file.relative_to(data_path).parts[:-1]), file.stem
+        )
         data = get_data(file)
         results = fitScanPFM(**data)
         for function in functions:
-            function(results, path)
+            function(results, file_path)
 
 
 def get_domains_distribution(results_path: Path):
