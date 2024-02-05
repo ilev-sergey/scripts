@@ -47,21 +47,9 @@ def get_domains_distribution(results_path: Path):
     return np.array(shares)
 
 
-def save_results(results: NDArray, path: Path | str):  # TODO: move to another file
+def save_results(results: dict, path: Path | str):  # TODO: move to another file
     Path.mkdir(path, parents=True, exist_ok=True)
-
-    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
-    abs = np.abs(results["A"])
-    piezomodule = np.abs(results["piezomodule"])
-
-    # TODO: add check if files exist doesn't process data
-    np.savetxt(path / "phase.txt", phase)  # TODO: simplify
-    np.save(path / "phase.npy", phase)
-    np.savetxt(path / "abs.txt", abs)
-    np.save(path / "abs.npy", abs)
-    np.savetxt(path / "piezo.txt", piezomodule)
-    np.save(path / "piezo.npy", piezomodule)
-
+    np.save(path / "results.npy", results)
     logging.info("data with fitting results is saved")
 
 
