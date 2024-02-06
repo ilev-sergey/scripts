@@ -27,6 +27,14 @@ def process_all_data(
             function(results, file_path)
 
 
+def flip_results(results_path: Path):
+    results = np.load(results_path, allow_pickle=True).item()
+    for key in results.keys():
+        results[key] = results[key][::-1]
+    np.save(path, results)
+    logging.info(f"results mirrored, path: {results_path}")
+
+
 def get_domains_distribution(results_path: Path):
     def calculate_domains(phase: NDArray[np.float64]):  # TODO: move to another file
         max = np.quantile(phase, 0.95)
@@ -48,6 +56,21 @@ def get_domains_distribution(results_path: Path):
         shares.append(share)
 
     return np.array(shares)
+
+
+def copy_to_root(root_path: Path, name="phase.png"):
+    import shutil
+
+    pathlist = root_path.glob(f"**/{name}")
+    for path in pathlist:
+        file_path = Path(
+            root_path,
+            "|".join((path.relative_to(root_path).parts[:-1])) + " " + path.name,
+        )
+        shutil.copy2(
+            path,
+            file_path,
+        )
 
 
 def save_results(results: dict, path: Path | str):  # TODO: move to another file
