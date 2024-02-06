@@ -58,14 +58,33 @@ def plot_map(
     fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
 
 
-def plot_phase(results: dict, path: Path):
+def transform_phase(phase: NDArray):
+    a = -2.8 * 180 / np.pi
+    b = 2.40 * 180 / np.pi
+    c = 90
+    d = -180
+
+    k_1 = (d - c) / (b - a)
+    k_2 = (b - a) / (d - c)
+    m_1 = (c + d - k_1 * (a + b)) / 2
+    m_2 = (a + b - k_2 * (c + d)) / 2
+
+    phase *= 180 / np.pi
+    for i in range(phase.shape[0]):
+        for j in range(phase.shape[1]):
+            if a < phase[i, j] < b:
+                phase[i, j] = (90 * np.tanh((k_1 * phase[i, j] + m_1) / 5)) * k_2 + m_2
+    phase *= np.pi / 180
+
+    return phase
+
+
+def plot_phase(results: dict, path: Path, transformed: bool = True):
     Path.mkdir(path, parents=True, exist_ok=True)
 
+    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
+
     fig, ax = plt.subplots()
-    phase = np.angle(
-        results["A"] * np.exp(-1j * np.pi / 10)
-    )  # TODO: automatic shift to maximize blue area (determine angle of max area, shift so angle is blue)
-    # blue = np.pi /10
     plot_map(
         fig,
         ax,
@@ -77,6 +96,20 @@ def plot_phase(results: dict, path: Path):
     )
     fig.savefig(path / "phase.png", bbox_inches="tight")
     plt.close(fig)
+
+    if transformed:
+        fig, ax = plt.subplots()
+        plot_map(
+            fig,
+            ax,
+            transform_phase(phase),
+            title="Phase",
+            cmap=cmocean.cm.phase,
+            vmin=-np.pi,
+            vmax=np.pi,
+        )
+        fig.savefig(path / "phase (transformed).png", bbox_inches="tight")
+        plt.close(fig)
 
 
 def plot_amplitude(results: dict, path: Path):
@@ -116,8 +149,6 @@ def plot_params(results: dict, path: Path):
     plt.tight_layout()
     fig.savefig(path / "params.png")
     plt.close(fig)
-
-    logging.info(f"params are plotted,  path: {path}")
 
 
 def plot_piezo(results: dict, path: Path, include_displ: bool = False):
@@ -160,5 +191,3 @@ def plot_piezo(results: dict, path: Path, include_displ: bool = False):
     plt.tight_layout()
     fig.savefig(path / "piezomodule.png")
     plt.close(fig)
-
-    logging.info(f"piezomodule is plotted, path: {path}")
