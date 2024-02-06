@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -9,8 +8,6 @@ import mpl_toolkits.axes_grid1  # type: ignore
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import norm  # type: ignore
-
-# TODO: add typehints
 
 
 def plot_map(
@@ -79,51 +76,42 @@ def transform_phase(phase: NDArray):
     return phase
 
 
-def plot_phase(results: dict, path: Path, transformed: bool = True):
-    Path.mkdir(path, parents=True, exist_ok=True)
-
-    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
-
-    fig, ax = plt.subplots()
-    plot_map(
-        fig,
-        ax,
-        phase,
-        title="Phase",
-        cmap=cmocean.cm.phase,
-        vmin=-np.pi,
-        vmax=np.pi,
-    )
-    fig.savefig(path / "phase.png", bbox_inches="tight")
-    plt.close(fig)
-
-    if transformed:
+def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
+    def save_image(phase: NDArray, img_name: str = "phase.png"):
         fig, ax = plt.subplots()
         plot_map(
             fig,
             ax,
-            transform_phase(phase),
+            phase,
             title="Phase",
             cmap=cmocean.cm.phase,
             vmin=-np.pi,
             vmax=np.pi,
         )
-        fig.savefig(path / "phase (transformed).png", bbox_inches="tight")
+        fig.savefig(output_folder / img_name, bbox_inches="tight")
         plt.close(fig)
 
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-def plot_amplitude(results: dict, path: Path):
-    Path.mkdir(path, parents=True, exist_ok=True)
+    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
+    save_image(phase)
+
+    if transformed:
+        save_image(transform_phase(phase), img_name="phase (transformed).png")
+
+
+def plot_amplitude(results: dict, output_folder: Path):
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
     amplitude = np.abs(results["A"])
     plot_map(fig, ax, amplitude, title="Amplitude")
-    fig.savefig(path / "amplitude.png", bbox_inches="tight")
+    fig.savefig(output_folder / "amplitude.png", bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_params(results: dict, path: Path):
-    Path.mkdir(path, parents=True, exist_ok=True)
+def plot_params(results: dict, output_folder: Path):
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})
 
@@ -147,12 +135,12 @@ def plot_params(results: dict, path: Path):
     plot_map(fig, axs[1, 2], np.abs(results["h"]), title="H", quantiles=(0.0, 1.0))
 
     plt.tight_layout()
-    fig.savefig(path / "params.png")
+    fig.savefig(output_folder / "params.png")
     plt.close(fig)
 
 
-def plot_piezo(results: dict, path: Path, include_displ: bool = False):
-    Path.mkdir(path, parents=True, exist_ok=True)
+def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False):
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})
 
@@ -189,5 +177,5 @@ def plot_piezo(results: dict, path: Path, include_displ: bool = False):
         axs[1, 1].legend([legend_text], loc="upper left")
 
     plt.tight_layout()
-    fig.savefig(path / "piezomodule.png")
+    fig.savefig(output_folder / "piezomodule.png")
     plt.close(fig)
