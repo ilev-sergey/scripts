@@ -40,10 +40,10 @@ def get_domains_distribution(results_path: Path):
 
         return share, threshold
 
-    pathlist = results_path.glob("**/phase.npy")
+    pathlist = results_path.glob("**/results.npy")
     shares = []
     for file in pathlist:
-        phase = np.load(file)
+        phase = np.angle(np.load(file, allow_pickle=True).item()["A"])
         share, _threshold = calculate_domains(phase)
         shares.append(share)
 
