@@ -41,6 +41,27 @@ def flip_results(results_filename: Path):
     logging.info(f"results mirrored, path: {results_filename}")
 
 
+def transform_phase(phase: NDArray):
+    a = -2.8 * 180 / np.pi
+    b = 2.40 * 180 / np.pi
+    c = 90
+    d = -180
+
+    k_1 = (d - c) / (b - a)
+    k_2 = (b - a) / (d - c)
+    m_1 = (c + d - k_1 * (a + b)) / 2
+    m_2 = (a + b - k_2 * (c + d)) / 2
+
+    phase *= 180 / np.pi
+    for i in range(phase.shape[0]):
+        for j in range(phase.shape[1]):
+            if a < phase[i, j] < b:
+                phase[i, j] = (90 * np.tanh((k_1 * phase[i, j] + m_1) / 5)) * k_2 + m_2
+    phase *= np.pi / 180
+
+    return phase
+
+
 def get_domains_distribution(input_folder: Path):
     def calculate_domains(phase: NDArray[np.float64]):
         max = np.quantile(phase, 0.95)
@@ -58,6 +79,7 @@ def get_domains_distribution(input_folder: Path):
     shares = []
     for file in pathlist:
         phase = np.angle(np.load(file, allow_pickle=True).item()["A"])
+        phase = transform_phase(phase)
         share, _threshold = calculate_domains(phase)
         shares.append(share)
 

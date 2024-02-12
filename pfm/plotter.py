@@ -9,6 +9,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import norm  # type: ignore
 
+from pfm.process import transform_phase
+
 
 def plot_map(
     fig: mpl.figure.Figure,
@@ -53,27 +55,6 @@ def plot_map(
     divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
     cax = divider.append_axes("bottom", size="5%", pad=0.05)
     fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
-
-
-def transform_phase(phase: NDArray):
-    a = -2.8 * 180 / np.pi
-    b = 2.40 * 180 / np.pi
-    c = 90
-    d = -180
-
-    k_1 = (d - c) / (b - a)
-    k_2 = (b - a) / (d - c)
-    m_1 = (c + d - k_1 * (a + b)) / 2
-    m_2 = (a + b - k_2 * (c + d)) / 2
-
-    phase *= 180 / np.pi
-    for i in range(phase.shape[0]):
-        for j in range(phase.shape[1]):
-            if a < phase[i, j] < b:
-                phase[i, j] = (90 * np.tanh((k_1 * phase[i, j] + m_1) / 5)) * k_2 + m_2
-    phase *= np.pi / 180
-
-    return phase
 
 
 def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
