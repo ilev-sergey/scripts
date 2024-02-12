@@ -64,26 +64,21 @@ def transform_phase(phase: NDArray):
 
 def get_domains_distribution(input_folder: Path):
     def calculate_domains(phase: NDArray[np.float64]):
-        max = np.quantile(phase, 0.95)
-        min = np.quantile(phase, 0.05)
-        diff = max - min
-        if diff < np.pi / 2:
-            return 0, phase.mean()
-        threshold = (max + min) / 2
-        small_phase = np.count_nonzero(phase <= threshold)
-        share = 1 - small_phase / phase.size
+        mask = np.logical_and(-np.pi / 2 < phase, phase < np.pi / 2)
+        blue_px = phase[mask].size
+        share = blue_px / phase.size
 
-        return share, threshold
+        return share
 
     pathlist = input_folder.glob("**/results.npy")
     shares = []
     for file in pathlist:
         phase = np.angle(np.load(file, allow_pickle=True).item()["A"])
         phase = transform_phase(phase)
-        share, _threshold = calculate_domains(phase)
+        share = calculate_domains(phase)
         shares.append(share)
 
-    return np.array(shares)
+    return {"blue": np.array(shares)}
 
 
 def copy_to_root(root_path: Path, name="phase.png"):
