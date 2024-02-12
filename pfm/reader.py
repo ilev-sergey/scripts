@@ -1,13 +1,14 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Union
 
 import netCDF4  # type: ignore
 import numpy as np
 from tqdm import trange  # type: ignore
 
 
-def get_data(data_filename: Path | str):
+def get_data(data_filename: Union[Path, str]):
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
@@ -74,7 +75,7 @@ def get_data(data_filename: Path | str):
     }
 
 
-def load_results(results_filename: Path | str):
+def load_results(results_filename: Union[Path, str]):
     results = np.load(results_filename, allow_pickle=True).item()
     logging.info(f"loaded cached results from {results_filename}")
     return results

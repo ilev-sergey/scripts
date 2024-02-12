@@ -1,7 +1,7 @@
 import logging
 import shutil
 from pathlib import Path
-from typing import Callable
+from typing import Callable, List, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -13,8 +13,8 @@ from pfm.reader import get_data, load_results
 
 def process_all_data(
     data_folder: Path,
-    results_folder: Path | str,
-    functions: list[Callable],
+    results_folder: Union[Path, str],
+    functions: List[Callable],
     cache: bool = False,
 ):
     datafiles = data_folder.glob("**/*.nc")
@@ -91,7 +91,7 @@ def copy_to_root(root_path: Path, name="phase.png"):
         shutil.copy2(path, file_path)
 
 
-def save_results(results: dict, output_folder: Path | str):
+def save_results(results: dict, output_folder: Union[Path, str]):
     output_folder = Path(output_folder)
     Path.mkdir(output_folder, parents=True, exist_ok=True)
     np.save(output_folder / "results.npy", results)  # type: ignore

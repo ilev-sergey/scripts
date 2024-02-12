@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple, Union
 
 import cmocean  # type: ignore
 import matplotlib as mpl
@@ -16,11 +16,11 @@ def plot_map(
     fig: mpl.figure.Figure,
     ax: mpl.axes.Axes,
     data: NDArray,
-    title: str | None = None,
-    vmin: float | None = None,
-    vmax: float | None = None,
-    quantiles: tuple[float, float] = (0.05, 0.95),
-    cmap: Any = "grey",
+    title: Union[str, None] = None,
+    vmin: Union[float, None] = None,
+    vmax: Union[float, None] = None,
+    quantiles: Tuple[float, float] = (0.05, 0.95),
+    cmap: Any = "gray",
 ):
     vmin = vmin or np.quantile(data, quantiles[0])
     vmax = vmax or np.quantile(data, quantiles[1])
