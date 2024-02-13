@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
@@ -79,6 +80,30 @@ def get_domains_distribution(input_folder: Path):
         shares.append(share)
 
     return {"blue": np.array(shares)}
+
+
+def plot_hysteresis(
+    voltages: NDArray | list,
+    shares: NDArray,
+    output_folder: Path | str = ".",
+    sample: str = "",
+    sort: bool = True,
+):
+    output_folder = Path(output_folder)
+    if sort:
+        voltages, shares = zip(*sorted(zip(voltages, shares)))
+    df = pd.DataFrame({"Voltages": voltages, "Shares": shares})
+
+    # correct order of points
+    pos = df[df["Voltages"] > 0]
+    neg = df[df["Voltages"] < 0]
+    df = pd.concat([neg[::-1], pos, neg.iloc[-1::]], ignore_index=True)
+
+    plt.plot(df["Voltages"], df["Shares"], "-o", label=sample)
+    plt.xlabel("Pulse voltage, V")
+    plt.ylabel("Share of blue domains")
+    plt.legend()
+    plt.savefig(output_folder / f"hysteresis {(sample)}.png", bbox_inches="tight")
 
 
 def copy_to_root(root_path: Path, name="phase.png"):
