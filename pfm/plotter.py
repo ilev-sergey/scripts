@@ -57,6 +57,54 @@ def plot_map(
     fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
 
 
+def plot_amp_phase_log(results: dict, output_folder: Path):
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
+
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    phase = transform_phase(np.angle(results["A"]))
+
+    plot_map(
+        fig,
+        axs[1, 0],
+        phase,
+        title="Phase",
+        cmap=cmocean.cm.phase,
+        vmin=-np.pi,
+        vmax=np.pi,
+    )
+    abs = np.abs(results["A"])
+    plot_map(fig, axs[0, 0], abs, title="Abs")
+    plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
+
+    fig.delaxes(axs[1, 1])
+    plt.tight_layout()
+    fig.savefig(output_folder / "amp_phase_log.png")
+    plt.close(fig)
+
+
+def plot_amp_phase(results: dict, output_folder: Path):
+    Path.mkdir(output_folder, parents=True, exist_ok=True)
+
+    fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+    phase = transform_phase(np.angle(results["A"]))
+
+    plot_map(
+        fig,
+        axs[1],
+        phase,
+        title="Phase",
+        cmap=cmocean.cm.phase,
+        vmin=-np.pi,
+        vmax=np.pi,
+    )
+    abs = np.abs(results["A"])
+    plot_map(fig, axs[0], abs, title="Abs")
+
+    plt.tight_layout()
+    fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
     def save_image(phase: NDArray, img_name: str = "phase.png"):
         fig, ax = plt.subplots()
