@@ -22,8 +22,8 @@ def plot_map(
     quantiles: tuple[float, float] = (0.05, 0.95),
     cmap: Any = "grey",
 ):
-    vmin = vmin or np.quantile(data, quantiles[0])
-    vmax = vmax or np.quantile(data, quantiles[1])
+    vmin = vmin or float(np.quantile(data, quantiles[0]))
+    vmax = vmax or float(np.quantile(data, quantiles[1]))
     image = ax.imshow(
         data,
         cmap=cmap,
