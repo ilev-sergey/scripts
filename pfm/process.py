@@ -120,12 +120,12 @@ def save_results(results: dict, output_folder: Path | str):
     output_folder = Path(output_folder)
     Path.mkdir(output_folder, parents=True, exist_ok=True)
     np.save(output_folder / "results.npy", results)  # type: ignore
-    logging.info(f"data with fitting results is saved,  path: {output_folder}")
+    logging.info(f"data with fitting results is saved, path: {output_folder}")
 
 
 if __name__ == "__main__":
     for path in Path().glob("results/#7755_2/"):
-        shares = get_domains_distribution(path)
+        shares = get_domains_distribution(path)["blue"]
         shares = np.delete(shares, 2)
         cycles = [0, 0.5, 1.5, 3.5, 5.5, 10.5, 20.5]
         plt.plot(cycles, shares, label=path.stem)
