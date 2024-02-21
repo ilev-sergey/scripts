@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def load_results(results_filename: Path | str):
     return results
 
 
-def parse_filename(filename: str):
+def parse_filename(filename: Path | str):
     filename = str(filename)
     filename, ext = filename.rsplit(".", 1)
     lst = filename.split(" ", 1)
@@ -97,6 +98,15 @@ def parse_filename(filename: str):
         hours,
         minutes,
         seconds,
-    ) = [int(elem) for elem in dt.split("_")]
+    ) = [int(elem) if elem.isdigit() else elem for elem in dt.split("_")]
     dt_obj = datetime(year, month, day, hours, minutes, seconds)
-    return {"datetime": dt_obj, "comment": comment}
+    voltage_pattern = r"[-+]?\d+(\.\d+)?( [VvВв])?|fresh"
+    time_pattern = r"\d+(?:mcs|ms|s)"
+    voltage = re.search(voltage_pattern, comment)
+    pulse_time = re.search(time_pattern, comment)
+    return {
+        "datetime": dt_obj,
+        "comment": comment,
+        "voltage": voltage,
+        "pulse_time": pulse_time,
+    }
