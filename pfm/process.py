@@ -42,7 +42,7 @@ def flip_results(results_filename: Path):
     logging.info(f"results mirrored, path: {results_filename}")
 
 
-def transform_phase(phase: NDArray):
+def transform_phase(phase: NDArray[np.float64]):
     a = -2.8 * 180 / np.pi
     b = 2.40 * 180 / np.pi
     c = 90
@@ -83,8 +83,8 @@ def get_domains_distribution(input_folder: Path):
 
 
 def plot_hysteresis(
-    voltages: NDArray | list,
-    shares: NDArray,
+    voltages: NDArray[np.float64] | list,
+    shares: NDArray[np.float64],
     output_folder: Path | str = ".",
     sample: str = "",
     sort: bool = True,

@@ -9,12 +9,12 @@ from pfm.vfit import vfit
 
 
 def fitScanPFM(
-    scan_pfm: NDArray,
-    cal_pfm: NDArray,
+    scan_pfm: NDArray[np.complex64],
+    cal_pfm: NDArray[np.complex64],
     metadata: dict,
     fc: float = 0.62e6,
     fspan: float = 195312.5,
-    **kwargs: NDArray
+    **kwargs: NDArray[np.complex64]
 ):
     logging.info("starting fitting process...")
 
@@ -47,7 +47,7 @@ def fitScanPFM(
         for nxCurve in range(sizex):
             indata = scan_pfm[nxCurve, nyCurve, :]
             indata = fft(indata)
-            indata = indata / cal_pfm  # calibration
+            indata = indata / cal_pfm  # calibration # type: ignore
 
             resp_pfm = np.flip(np.concatenate((indata[-HLEN - 1 :], indata[1:HLEN])))
 

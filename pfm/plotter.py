@@ -15,7 +15,7 @@ from pfm.process import transform_phase
 def plot_map(
     fig: mpl.figure.Figure,
     ax: mpl.axes.Axes,
-    data: NDArray,
+    data: NDArray[np.float64],
     title: str | None = None,
     vmin: float | None = None,
     vmax: float | None = None,
@@ -106,7 +106,7 @@ def plot_amp_phase(results: dict, output_folder: Path):
 
 
 def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
-    def save_image(phase: NDArray, img_name: str = "phase.png"):
+    def save_image(phase: NDArray[np.float64], img_name: str = "phase.png"):
         fig, ax = plt.subplots()
         plot_map(
             fig,

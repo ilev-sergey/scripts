@@ -4,8 +4,8 @@ from numpy.typing import NDArray
 from scipy.signal import butter, filtfilt  # type: ignore
 
 
-def vfit(fs: NDArray, data: NDArray, doPlot: bool = False):
-    def iter(pole: complex, s: NDArray, data: NDArray):
+def vfit(fs: NDArray[np.float64], data: NDArray[np.complex64], doPlot: bool = False):
+    def iter(pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64]):
         real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
         imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
 
