@@ -21,7 +21,7 @@ def plot_map(
     vmax: float | None = None,
     quantiles: tuple[float, float] = (0.05, 0.95),
     cmap: Any = "grey",
-):
+) -> None:
     vmin = vmin or float(np.quantile(data, quantiles[0]))
     vmax = vmax or float(np.quantile(data, quantiles[1]))
     image = ax.imshow(
@@ -57,7 +57,7 @@ def plot_map(
     fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
 
 
-def plot_amp_phase_log(results: dict, output_folder: Path):
+def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -82,7 +82,7 @@ def plot_amp_phase_log(results: dict, output_folder: Path):
     plt.close(fig)
 
 
-def plot_amp_phase(results: dict, output_folder: Path):
+def plot_amp_phase(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 1, figsize=(10, 10))
@@ -105,8 +105,8 @@ def plot_amp_phase(results: dict, output_folder: Path):
     plt.close(fig)
 
 
-def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
-    def save_image(phase: NDArray[np.float64], img_name: str = "phase.png"):
+def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> None:
+    def save_image(phase: NDArray[np.float64], img_name: str = "phase.png") -> None:
         fig, ax = plt.subplots()
         plot_map(
             fig,
@@ -129,7 +129,7 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True):
         save_image(transform_phase(phase), img_name="phase (transformed).png")
 
 
-def plot_amplitude(results: dict, output_folder: Path):
+def plot_amplitude(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
@@ -139,7 +139,7 @@ def plot_amplitude(results: dict, output_folder: Path):
     plt.close(fig)
 
 
-def plot_params(results: dict, output_folder: Path):
+def plot_params(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})
@@ -168,7 +168,7 @@ def plot_params(results: dict, output_folder: Path):
     plt.close(fig)
 
 
-def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False):
+def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})

@@ -17,7 +17,7 @@ def process_all_data(
     results_folder: Path | str,
     functions: list[Callable],
     cache: bool = False,
-):
+) -> None:
     datafiles = data_folder.glob("**/*.nc")
     for datafile in datafiles:
         results_subfolder = Path(
@@ -34,7 +34,7 @@ def process_all_data(
             function(results, results_subfolder)
 
 
-def flip_results(results_filename: Path):
+def flip_results(results_filename: Path) -> None:
     results = np.load(results_filename, allow_pickle=True).item()
     for key in results.keys():
         results[key] = results[key][::-1]
@@ -42,7 +42,7 @@ def flip_results(results_filename: Path):
     logging.info(f"results mirrored, path: {results_filename}")
 
 
-def transform_phase(phase: NDArray[np.float64]):
+def transform_phase(phase: NDArray[np.float64]) -> NDArray[np.float64]:
     a = -2.8 * 180 / np.pi
     b = 2.40 * 180 / np.pi
     c = 90
@@ -63,8 +63,8 @@ def transform_phase(phase: NDArray[np.float64]):
     return phase
 
 
-def get_domains_distribution(input_folder: Path):
-    def calculate_domains(phase: NDArray[np.float64]):
+def get_domains_distribution(input_folder: Path) -> dict[str, NDArray[np.float64]]:
+    def calculate_domains(phase: NDArray[np.float64]) -> float:
         mask = np.logical_and(-np.pi / 2 < phase, phase < np.pi / 2)
         blue_px = phase[mask].size
         share = blue_px / phase.size
@@ -88,7 +88,7 @@ def plot_hysteresis(
     output_folder: Path | str = ".",
     sample: str = "",
     sort: bool = True,
-):
+) -> None:
     output_folder = Path(output_folder)
     if sort:
         voltages, shares = zip(*sorted(zip(voltages, shares)))
@@ -106,7 +106,7 @@ def plot_hysteresis(
     plt.savefig(output_folder / f"hysteresis {(sample)}.png", bbox_inches="tight")
 
 
-def copy_to_root(root_path: Path, name="phase.png"):
+def copy_to_root(root_path: Path, name="phase.png") -> None:
     pathlist = root_path.glob(f"**/{name}")
     for path in pathlist:
         file_path = Path(
@@ -116,7 +116,7 @@ def copy_to_root(root_path: Path, name="phase.png"):
         shutil.copy2(path, file_path)
 
 
-def save_results(results: dict, output_folder: Path | str):
+def save_results(results: dict, output_folder: Path | str) -> None:
     output_folder = Path(output_folder)
     Path.mkdir(output_folder, parents=True, exist_ok=True)
     np.save(output_folder / "results.npy", results)  # type: ignore

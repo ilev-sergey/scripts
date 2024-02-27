@@ -15,7 +15,7 @@ def fitScanPFM(
     fc: float = 0.62e6,
     fspan: float = 195312.5,
     **kwargs: NDArray[np.complex64]
-):
+) -> dict[str, NDArray[np.complex64]]:
     logging.info("starting fitting process...")
 
     sizex, sizey = scan_pfm.shape[:2]
