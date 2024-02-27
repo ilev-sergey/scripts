@@ -1,3 +1,14 @@
+"""
+Module providing functionality for plotting response data.
+
+Works with response data that is received after fitting PFM data
+using `pfm.fit` module. It includes functions to create 2D maps for
+amplitude, phase, and fitting parameters, as well as histograms for
+piezoresponse distribution. The module is a wrap around matplotlib
+functions designed for the purpose of generation of high-quality figures
+with consistent style suitable for both analysis and publication.
+"""
+
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +33,20 @@ def _plot_map(
     quantiles: tuple[float, float] = (0.05, 0.95),
     cmap: Any = "grey",
 ) -> None:
+    """Plots a map of the given 2D data on the specified figure and
+    axes. Used as as a helper function for other plot functions for
+    a consistent image style.
+
+    :param fig: The figure to plot on.
+    :param ax: The axes to plot on.
+    :param data: The 2D data to be plotted.
+    :param title: The title of the plot.
+    :param vmin: The minimum value of the color scale.
+    :param vmax: The maximum value of the color scale.
+    :param quantiles: The quantiles for **vmin** and **vmax** calculation.
+        Used only if **vmin** and **vmax** are not specified.
+    :param cmap: The colormap to be used for plotting.
+    """
     vmin = vmin or float(np.quantile(data, quantiles[0]))
     vmax = vmax or float(np.quantile(data, quantiles[1]))
     image = ax.imshow(
@@ -58,6 +83,13 @@ def _plot_map(
 
 
 def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
+    """Generates a figure with maps of amplitude, phase
+    and log of amplitude from fitting results and
+    saves it in the specified output folder.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
@@ -83,6 +115,12 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
 
 
 def plot_amp_phase(results: dict, output_folder: Path) -> None:
+    """Generates a figure with maps of amplitude and phase from
+    fitting results and saves it in the specified output folder.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 1, figsize=(10, 10))
@@ -106,7 +144,21 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
 
 
 def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> None:
+    """Generates a figure with map of phase from fitting results and
+    saves it in the specified output folder. Optionally also saves
+    the transformed phase.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    :param transformed: Whether to save the transformed phase.
+    """
+
     def save_image(phase: NDArray[np.float64], img_name: str = "phase.png") -> None:
+        """Helper function to plot phasemap and save image.
+
+        :param phase: data with phase to be plotted
+        :param img_name: filename of the saved image
+        """
         fig, ax = plt.subplots()
         _plot_map(
             fig,
@@ -130,6 +182,12 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
 
 
 def plot_amplitude(results: dict, output_folder: Path) -> None:
+    """Generates a figure with map of amplitude from fitting results
+    and saves it in the specified output folder.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
@@ -140,6 +198,13 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
 
 
 def plot_params(results: dict, output_folder: Path) -> None:
+    """Generates a figure with maps of amplitude, phase, contact
+    frequency, quality factor and vector fitting parameters (D, H)
+    from fitting results and saves it in the specified output folder.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})
@@ -169,6 +234,15 @@ def plot_params(results: dict, output_folder: Path) -> None:
 
 
 def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) -> None:
+    """Generates a figure with map of piezomodule and distribution of
+    piezomodule from fitting results and saves it in the specified
+    output folder. Optionally also plots the displacement map and
+    distribution of displacement.
+
+    :param results: Fitting results with data to be plotted.
+    :param output_folder: The folder where the plot will be saved.
+    :param include_displ: Whether to plot the displacement map.
+    """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     plt.rcParams.update({"font.size": 14})

@@ -1,3 +1,10 @@
+"""
+Module for reading PFM data files (.nc).
+
+It provides functionality to extract the data into numpy arrays for
+further processing and analysis.
+"""
+
 import logging
 import re
 from datetime import datetime
@@ -12,6 +19,14 @@ from tqdm import trange  # type: ignore
 def get_data(
     data_filename: Path | str, print_params: bool = False
 ) -> dict[str, np.ndarray | dict[str, bool]]:
+    """Loads data from the specified datafile and returns it in a
+    dictionary.
+
+    :param data_filename: Path to the data file.
+    :param print_params: If ``True``, the scan parameters are printed
+        to a text file.
+    :return: Dictionary containing scan data.
+    """
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
@@ -80,12 +95,23 @@ def get_data(
 
 
 def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64]]:
+    """Loads cached fitting results from the file.
+
+    :param results_filename: Path to the cached results file.
+    :return: Dictionary containing scan data.
+    """
     results = np.load(results_filename, allow_pickle=True).item()
     logging.info(f"loaded cached results from {results_filename}")
     return results
 
 
 def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match]:
+    """Extracts scan parameters from the datafile name if possible.
+
+    :param filename: Path to datafile.
+    :return: A dictionary containing the parsed elements including
+        datetime, comment, voltage, and pulse time.
+    """
     filename = str(filename)
     filename, ext = filename.rsplit(".", 1)
     lst = filename.split(" ", 1)

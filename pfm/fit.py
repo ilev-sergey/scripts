@@ -1,3 +1,11 @@
+"""
+Module providing functionality for fitting PFM data.
+
+This module includes functions to fit data obtained from BE PFM
+experiments. The goal is to extract meaningful parameters that can be
+used for further analysis of the ferroelectric material properties.
+"""
+
 import logging
 from typing import Any
 
@@ -17,6 +25,19 @@ def fit_data(
     fspan: float = 195312.5,
     **kwargs: NDArray[np.complex64]
 ) -> dict[str, NDArray[np.complex64]]:
+    r"""Fits PFM data at each point using `_vfit` to obtain response data.
+
+    :param scan_pfm: The PFM scan data.
+    :param cal_pfm: The data for PFM calibration.
+    :param metadata: Data containing info about the scan parameters.
+    :param fc: The center frequency.
+    :param fspan: The frequency span.
+    :param \**kwargs: Additional keyword arguments for
+        the fitting process.
+
+    :return: A dictionary containing the reponse data for
+        each point in the scan data.
+    """
     logging.info("starting fitting process...")
 
     sizex, sizey = scan_pfm.shape[:2]
@@ -73,7 +94,27 @@ def fit_data(
 def _vfit(
     fs: NDArray[np.float64], data: NDArray[np.complex64], plot: bool = False
 ) -> Any:
+    """Uses `vector fitting <https://scikit-rf.readthedocs.io/en/latest/tutorials/VectorFitting.html>`_
+    algorithm for fitting BE PFM data in a single point
+
+    Also see `this article <https://www.sintef.no/globalassets/project/vectfit/vector_fitting_1999.pdf>`_
+    for details
+
+    :param fs: Frequency span.
+    :param data: PFM data for single point.
+    :param plot: Whether to plot results during fitting.
+    :return: Response data for the single point.
+    """
+
     def iter(pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64]):
+        """Performs vector fitting iteration
+
+        # TODO: add descriptions
+        :param pole: _description_.
+        :param s: _description_.
+        :param data: _description_.
+        :return: _description_.
+        """
         real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
         imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
 

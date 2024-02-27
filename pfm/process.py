@@ -1,3 +1,10 @@
+"""
+Module providing functionality for processing response data.
+
+Works with response data that is received after fitting PFM data
+using `pfm.fit` module.
+"""
+
 import gc
 import logging
 import shutil
@@ -19,6 +26,16 @@ def process_all_data(
     functions: list[Callable],
     cache: bool = False,
 ) -> None:
+    """Convenient interface for processing all data in the given folder.
+
+    :param data_folder: Parent folder with datafiles.
+    :param results_folder: Parent folder to save results.
+    :param functions: Functions that should be applied
+        to processed data.
+    :param cache: If ``True`` tries to load cached results from
+        **results_folder**. If cache is not found, the data is processed
+        in the usual way.
+    """
     datafiles = data_folder.glob("**/*.nc")
     for datafile in datafiles:
         results_subfolder = Path(
@@ -40,6 +57,14 @@ def process_all_data(
 
 
 def flip_results(results_filename: Path) -> None:
+    """Flip the data in the given results file (in place). As a result,
+    maps will be reflected horizontally. Can be used in case of wrong
+    choice of direction in Nova during the scanning (right and down
+    instead of right and up).
+
+    :param results_filename: The file path to the results.
+    """
+
     results = np.load(results_filename, allow_pickle=True).item()
     for key in results.keys():
         results[key] = results[key][::-1]
@@ -48,6 +73,14 @@ def flip_results(results_filename: Path) -> None:
 
 
 def transform_phase(phase: NDArray[np.float64]) -> NDArray[np.float64]:
+    """Transforms the input phase array using `Heaviside step function
+    <https://en.wikipedia.org/wiki/Heaviside_step_function#Analytic_approximations>`_.
+    Used for better interpretability of phase maps.
+
+    :param phase: Array of phase values
+    :return: An array of transformed phase values
+    """
+
     a = -2.8 * 180 / np.pi
     b = 2.40 * 180 / np.pi
     c = 90
@@ -69,7 +102,22 @@ def transform_phase(phase: NDArray[np.float64]) -> NDArray[np.float64]:
 
 
 def get_domains_distribution(input_folder: Path) -> dict[str, NDArray[np.float64]]:
+    """Calculates the share of domains with lowest phase in the each
+    results file within the input folder. Used to evaluate the wake-up
+    dynamics of the sample during PFM measurements.
+
+    :param input_folder: The folder containing files with fitting
+        results.
+    :return: A dictionary with the distribution of domains.
+    """
+
     def calculate_domains(phase: NDArray[np.float64]) -> float:
+        """Helper function, calculates the domains share of the given
+        phase array.
+
+        :param phase: Array of phase values.
+        :return: The share of pixels with the lowest phase.
+        """
         mask = np.logical_and(-np.pi / 2 < phase, phase < np.pi / 2)
         blue_px = phase[mask].size
         share = blue_px / phase.size
@@ -94,6 +142,16 @@ def plot_hysteresis(
     sample: str = "",
     sort: bool = True,
 ) -> None:
+    """Plots hysteresis curve for given voltages and domain shares,
+    and saves the plot to the output folder.
+
+    :param voltages: Array of voltages.
+    :param shares: Array of shares.
+    :param output_folder: Output folder where the plot will be saved.
+    :param sample: Sample name to be used in plot label.
+    :param sort: If True, sorts the voltages and shares in ascending
+        order before plotting.
+    """
     output_folder = Path(output_folder)
     if sort:
         voltages, shares = zip(*sorted(zip(voltages, shares)))
@@ -112,6 +170,15 @@ def plot_hysteresis(
 
 
 def copy_to_root(root_path: Path, name="phase.png") -> None:
+    """Copy files with the given name to the root directory. Used to
+    track differences in the maps in more convenient way, without
+    having to look in the folders.
+    # TODO: maybe change results structure to "results/datafile.npy" +
+    "results/phases/ etc.
+
+    :param root_path: The root directory path.
+    :param name: The name of the file to be copied.
+    """
     pathlist = root_path.glob(f"**/{name}")
     for path in pathlist:
         file_path = Path(
@@ -122,6 +189,12 @@ def copy_to_root(root_path: Path, name="phase.png") -> None:
 
 
 def save_results(results: dict, output_folder: Path | str) -> None:
+    """Saves fitting results to the specified output folder as a numpy
+    file.
+
+    :param results: The fitting results to be saved.
+    :param output_folder: The path to the output folder.
+    """
     output_folder = Path(output_folder)
     Path.mkdir(output_folder, parents=True, exist_ok=True)
     np.save(output_folder / "results.npy", results)  # type: ignore
