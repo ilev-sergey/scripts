@@ -8,8 +8,8 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
-from pfm.fitScanPFM import fitScanPFM
-from pfm.reader import get_data, load_results
+from pfm.fit import fit_data
+from pfm.read import get_data, load_results
 
 
 def process_all_data(
@@ -29,7 +29,7 @@ def process_all_data(
             results = load_results(results_subfolder / "results.npy")
         else:
             data = get_data(datafile)
-            results = fitScanPFM(**data)
+            results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
 
