@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 from scipy.fft import fft  # type: ignore
 from tqdm import trange  # type: ignore
 
-from pfm.vfit import vfit
+from pfm.vfit import _vfit
 
 
 def fitScanPFM(
@@ -52,7 +52,7 @@ def fitScanPFM(
             resp_pfm = np.flip(np.concatenate((indata[-HLEN - 1 :], indata[1:HLEN])))
 
             fs = np.linspace(fc - fspan / 2, fc + fspan / 2, resp_pfm.size)
-            A, s0, D, h, maxresp, displacement, piezomodule = vfit(fs, resp_pfm)
+            A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, resp_pfm)
 
             results["A"][nxCurve, nyCurve] = A
             results["f0"][nxCurve, nyCurve] = abs(np.imag(s0))

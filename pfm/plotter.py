@@ -12,7 +12,7 @@ from scipy.stats import norm  # type: ignore
 from pfm.process import transform_phase
 
 
-def plot_map(
+def _plot_map(
     fig: mpl.figure.Figure,
     ax: mpl.axes.Axes,
     data: NDArray[np.float64],
@@ -63,7 +63,7 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
     phase = transform_phase(np.angle(results["A"]))
 
-    plot_map(
+    _plot_map(
         fig,
         axs[1, 0],
         phase,
@@ -73,8 +73,8 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
     abs = np.abs(results["A"])
-    plot_map(fig, axs[0, 0], abs, title="Abs")
-    plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
+    _plot_map(fig, axs[0, 0], abs, title="Abs")
+    _plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
 
     fig.delaxes(axs[1, 1])
     plt.tight_layout()
@@ -88,7 +88,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     fig, axs = plt.subplots(2, 1, figsize=(10, 10))
     phase = transform_phase(np.angle(results["A"]))
 
-    plot_map(
+    _plot_map(
         fig,
         axs[1],
         phase,
@@ -98,7 +98,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
     abs = np.abs(results["A"])
-    plot_map(fig, axs[0], abs, title="Abs")
+    _plot_map(fig, axs[0], abs, title="Abs")
 
     plt.tight_layout()
     fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
@@ -108,7 +108,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
 def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> None:
     def save_image(phase: NDArray[np.float64], img_name: str = "phase.png") -> None:
         fig, ax = plt.subplots()
-        plot_map(
+        _plot_map(
             fig,
             ax,
             phase,
@@ -134,7 +134,7 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
 
     fig, ax = plt.subplots()
     amplitude = np.abs(results["A"])
-    plot_map(fig, ax, amplitude, title="Amplitude")
+    _plot_map(fig, ax, amplitude, title="Amplitude")
     fig.savefig(output_folder / "amplitude.png", bbox_inches="tight")
     plt.close(fig)
 
@@ -147,7 +147,7 @@ def plot_params(results: dict, output_folder: Path) -> None:
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
     phase = np.angle(results["A"] * np.exp(0.1 * 1j * np.pi / 2))
-    plot_map(
+    _plot_map(
         fig,
         axs[0, 1],
         phase,
@@ -157,11 +157,11 @@ def plot_params(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
 
-    plot_map(fig, axs[0, 0], np.abs(results["A"]), title="Abs")
-    plot_map(fig, axs[0, 2], np.abs(results["f0"]), title="Freq")
-    plot_map(fig, axs[1, 0], np.abs(results["Q"]), title="Q", quantiles=(0.1, 0.9))
-    plot_map(fig, axs[1, 1], np.abs(results["D"]), title="D", quantiles=(0.1, 0.9))
-    plot_map(fig, axs[1, 2], np.abs(results["h"]), title="H", quantiles=(0.0, 1.0))
+    _plot_map(fig, axs[0, 0], np.abs(results["A"]), title="Abs")
+    _plot_map(fig, axs[0, 2], np.abs(results["f0"]), title="Freq")
+    _plot_map(fig, axs[1, 0], np.abs(results["Q"]), title="Q", quantiles=(0.1, 0.9))
+    _plot_map(fig, axs[1, 1], np.abs(results["D"]), title="D", quantiles=(0.1, 0.9))
+    _plot_map(fig, axs[1, 2], np.abs(results["h"]), title="H", quantiles=(0.0, 1.0))
 
     plt.tight_layout()
     fig.savefig(output_folder / "params.png")
@@ -176,7 +176,7 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
     fig, axs = plt.subplots(1, 2, figsize=(25, 10))
 
     piezomodule = np.abs(results["piezomodule"])
-    plot_map(fig, axs[0], piezomodule, title="Piezomodule (pm/V)")
+    _plot_map(fig, axs[0], piezomodule, title="Piezomodule (pm/V)")
 
     D33 = piezomodule.flatten()
     mean_D33 = round(np.mean(D33), 3)
@@ -195,7 +195,7 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
 
     if include_displ:
         displacement = np.abs(results["displacement"])
-        plot_map(fig, axs[1, 0], displacement, title="Low-frequency displacement [pm]")
+        _plot_map(fig, axs[1, 0], displacement, title="Low-frequency displacement [pm]")
 
         mean_displ = round(np.mean(displacement), 3)
         std_displ = round(np.std(displacement), 3)

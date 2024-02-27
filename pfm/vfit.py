@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from scipy.signal import butter, filtfilt  # type: ignore
 
 
-def vfit(
+def _vfit(
     fs: NDArray[np.float64], data: NDArray[np.complex64], doPlot: bool = False
 ) -> Any:
     def iter(pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64]):
