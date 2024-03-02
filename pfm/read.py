@@ -9,13 +9,16 @@ from numpy.typing import NDArray
 from tqdm import trange  # type: ignore
 
 
-def get_data(data_filename: Path | str) -> dict[str, np.ndarray | dict[str, bool]]:
+def get_data(
+    data_filename: Path | str, print_params: bool = False
+) -> dict[str, np.ndarray | dict[str, bool]]:
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
-    with open("parameters" + ".txt", "w") as file:
-        file.write(str(dataset) + "\n")
-    logging.info("\tparameters.txt created")
+    if print_params:
+        with open("parameters" + ".txt", "w") as file:
+            file.write(str(dataset) + "\n")
+        logging.info("parameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
     pfm = dataset.groups["data_pfm"]
