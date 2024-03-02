@@ -71,7 +71,7 @@ def fit_data(
 
 
 def _vfit(
-    fs: NDArray[np.float64], data: NDArray[np.complex64], doPlot: bool = False
+    fs: NDArray[np.float64], data: NDArray[np.complex64], plot: bool = False
 ) -> Any:
     def iter(pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64]):
         real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
@@ -127,7 +127,7 @@ def _vfit(
     displacement = maxresp * sensitivity / (Avg * Q)
     piezomodule = maxresp * sensitivity / (Avg * Q * volts_in_bin)
 
-    if doPlot:
+    if plot:
         mfs = fs
         ms = 1j * mfs
 
