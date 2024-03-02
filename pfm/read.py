@@ -105,7 +105,7 @@ def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64
     return results
 
 
-def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match]:
+def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match | None]:
     """Extracts scan parameters from the datafile name if possible.
 
     :param filename: Path to datafile.
