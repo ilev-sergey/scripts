@@ -31,7 +31,7 @@ def _plot_map(
     vmin: Union[float, None] = None,
     vmax: Union[float, None] = None,
     quantiles: Tuple[float, float] = (0.05, 0.95),
-    cmap: Any = "grey",
+    cmap: Any = "gray",
 ) -> None:
     """Plots a map of the given 2D data on the specified figure and
     axes. Used as as a helper function for other plot functions for
