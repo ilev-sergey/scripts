@@ -1,19 +1,39 @@
+"""
+Module for reading PFM data files (.nc).
+
+It provides functionality to extract the data into numpy arrays for
+further processing and analysis.
+"""
+
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
 import netCDF4  # type: ignore
 import numpy as np
+from numpy.typing import NDArray
 from tqdm import trange  # type: ignore
 
 
-def get_data(data_filename: Path | str):
+def get_data(
+    data_filename: Path | str, print_params: bool = False
+) -> dict[str, np.ndarray | dict[str, bool]]:
+    """Loads data from the specified datafile and returns it in a
+    dictionary.
+
+    :param data_filename: Path to the data file.
+    :param print_params: If ``True``, the scan parameters are printed
+        to a text file.
+    :return: Dictionary containing scan data.
+    """
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
-    with open("parameters" + ".txt", "w") as file:
-        file.write(str(dataset) + "\n")
-    logging.info("\tparameters.txt created")
+    if print_params:
+        with open("parameters" + ".txt", "w") as file:
+            file.write(str(dataset) + "\n")
+        logging.info("parameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
     pfm = dataset.groups["data_pfm"]
@@ -74,13 +94,24 @@ def get_data(data_filename: Path | str):
     }
 
 
-def load_results(results_filename: Path | str):
+def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64]]:
+    """Loads cached fitting results from the file.
+
+    :param results_filename: Path to the cached results file.
+    :return: Dictionary containing scan data.
+    """
     results = np.load(results_filename, allow_pickle=True).item()
     logging.info(f"loaded cached results from {results_filename}")
     return results
 
 
-def parse_filename(filename: str):
+def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match | None]:
+    """Extracts scan parameters from the datafile name if possible.
+
+    :param filename: Path to datafile.
+    :return: A dictionary containing the parsed elements including
+        datetime, comment, voltage, and pulse time.
+    """
     filename = str(filename)
     filename, ext = filename.rsplit(".", 1)
     lst = filename.split(" ", 1)
@@ -97,6 +128,15 @@ def parse_filename(filename: str):
         hours,
         minutes,
         seconds,
-    ) = [int(elem) for elem in dt.split("_")]
+    ) = [int(elem) if elem.isdigit() else elem for elem in dt.split("_")]
     dt_obj = datetime(year, month, day, hours, minutes, seconds)
-    return {"datetime": dt_obj, "comment": comment}
+    voltage_pattern = r"[-+]?\d+(\.\d+)?( [VvВв])?|fresh"
+    time_pattern = r"\d+(?:mcs|ms|s)"
+    voltage = re.search(voltage_pattern, comment)
+    pulse_time = re.search(time_pattern, comment)
+    return {
+        "datetime": dt_obj,
+        "comment": comment,
+        "voltage": voltage,
+        "pulse_time": pulse_time,
+    }

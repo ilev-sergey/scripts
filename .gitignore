@@ -6,6 +6,8 @@ test.py
 notebook.ipynb
 grain processor
 
+docs/build
+
 __pycache__/
 .ipynb_checkpoints
 .venv
