@@ -5,7 +5,6 @@ Works with response data that is received after fitting PFM data
 using `pfm.fit` module.
 """
 
-import gc
 import logging
 import shutil
 from pathlib import Path
@@ -50,10 +49,6 @@ def process_all_data(
             results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
-
-        del data
-        del results
-        gc.collect()
 
 
 def flip_results(results_filename: Path) -> None:
