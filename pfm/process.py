@@ -7,6 +7,7 @@ using `pfm.fit` module.
 
 import logging
 import shutil
+from enum import Enum
 from pathlib import Path
 from typing import Callable
 
@@ -19,11 +20,31 @@ from pfm.fit import fit_data
 from pfm.read import get_data, load_results
 
 
+class Cache(Enum):
+    """
+    Enum used to specify how to handle cached results when processing
+    data.
+    """
+
+    IGNORE = 0
+    """
+    Ignore cached results and recompute everything.
+    """
+    USE = 1
+    """
+    If cached results are found, use them for processing.
+    """
+    SKIP = 2
+    """
+    if cached results are found, skip processing this data.
+    """
+
+
 def process_all_data(
     data_folder: Path,
     results_folder: Path | str,
     functions: list[Callable],
-    cache: bool = False,
+    cache: Cache | bool = Cache.SKIP,
 ) -> None:
     """Convenient interface for processing all data in the given folder.
 
@@ -42,11 +63,15 @@ def process_all_data(
             *(datafile.relative_to(data_folder).parts[:-1]),
             datafile.stem,
         )
-        if cache and (results_subfolder / "results.npy").exists():
-            results = load_results(results_subfolder / "results.npy")
-        else:
-            data = get_data(datafile)
-            results = fit_data(**data)
+        cache_enum = Cache(cache)
+        match cache_enum:
+            case Cache.SKIP if (results_subfolder / "results.npy").exists():
+                continue
+            case Cache.USE if (results_subfolder / "results.npy").exists():
+                results = load_results(results_subfolder / "results.npy")
+            case Cache.IGNORE | _:
+                data = get_data(datafile)
+                results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
 

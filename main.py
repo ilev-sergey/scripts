@@ -8,7 +8,7 @@ from pfm.plot import (
     plot_phase,
     plot_piezo,
 )
-from pfm.process import process_all_data, save_results
+from pfm.process import Cache, process_all_data, save_results
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -22,4 +22,4 @@ functions_to_apply = [
     plot_amp_phase_log,
     save_results,
 ]
-process_all_data(data_path, results_path, functions_to_apply, cache=True)  # type: ignore
+process_all_data(data_path, results_path, functions_to_apply, cache=Cache.SKIP)  # type: ignore
