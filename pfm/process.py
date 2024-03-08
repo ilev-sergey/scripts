@@ -54,7 +54,9 @@ def process_all_data(
         to processed data.
     :param cache: If ``True`` tries to load cached results from
         **results_folder**. If cache is not found, the data is processed
-        in the usual way.
+        in the usual way. Other possible values are `Cache` enum
+        members (`Cache.IGNORE` equals to ``False``,
+        `Cache.USE` equals to ``True``).
     """
     datafiles = data_folder.glob("**/*.nc")
     for datafile in datafiles:
