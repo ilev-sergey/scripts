@@ -7,6 +7,7 @@ using `pfm.fit` module.
 
 import logging
 import shutil
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Dict, List, Union
 
@@ -19,11 +20,31 @@ from pfm.fit import fit_data
 from pfm.read import get_data, load_results
 
 
+class Cache(Enum):
+    """
+    Enum used to specify how to handle cached results when processing
+    data.
+    """
+
+    IGNORE = 0
+    """
+    Ignore cached results and recompute everything.
+    """
+    USE = 1
+    """
+    If cached results are found, use them for processing.
+    """
+    SKIP = 2
+    """
+    if cached results are found, skip processing this data.
+    """
+
+
 def process_all_data(
     data_folder: Path,
     results_folder: Union[Path, str],
     functions: List[Callable],
-    cache: bool = False,
+    cache: Union[Cache, bool] = Cache.SKIP,
 ) -> None:
     """Convenient interface for processing all data in the given folder.
 
@@ -33,7 +54,9 @@ def process_all_data(
         to processed data.
     :param cache: If ``True`` tries to load cached results from
         **results_folder**. If cache is not found, the data is processed
-        in the usual way.
+        in the usual way. Other possible values are `Cache` enum
+        members (`Cache.IGNORE` equals to ``False``,
+        `Cache.USE` equals to ``True``).
     """
     datafiles = data_folder.glob("**/*.nc")
     for datafile in datafiles:
@@ -42,10 +65,17 @@ def process_all_data(
             *(datafile.relative_to(data_folder).parts[:-1]),
             datafile.stem,
         )
-        if cache and (results_subfolder / "results.npy").exists():
+        cache_enum = Cache(cache)
+        if cache_enum is Cache.SKIP and (results_subfolder / "results.npy").exists():
+            logging.info(f"skipping {datafile}: results exist")
+            continue
+        elif cache_enum is Cache.USE and (results_subfolder / "results.npy").exists():
             results = load_results(results_subfolder / "results.npy")
         else:
             data = get_data(datafile)
+            if data["scan_pfm"].shape == (0,):
+                logging.warning(f"skipping {datafile}: empty data")
+                continue
             results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
