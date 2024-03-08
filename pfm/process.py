@@ -66,11 +66,15 @@ def process_all_data(
         cache_enum = Cache(cache)
         match cache_enum:
             case Cache.SKIP if (results_subfolder / "results.npy").exists():
+                logging.info(f"skipping {datafile}: results exist")
                 continue
             case Cache.USE if (results_subfolder / "results.npy").exists():
                 results = load_results(results_subfolder / "results.npy")
             case Cache.IGNORE | _:
                 data = get_data(datafile)
+                if data["scan_pfm"].shape == (0,):
+                    logging.warning(f"skipping {datafile}: empty data")
+                    continue
                 results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
