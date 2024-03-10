@@ -174,7 +174,7 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
 
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
+    phase = np.angle(results["A"])
     save_image(phase)
 
     if transformed:
@@ -211,7 +211,7 @@ def plot_params(results: dict, output_folder: Path) -> None:
 
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
-    phase = np.angle(results["A"] * np.exp(0.1 * 1j * np.pi / 2))
+    phase = np.angle(results["A"])
     _plot_map(
         fig,
         axs[0, 1],

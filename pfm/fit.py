@@ -158,7 +158,7 @@ def _vfit(
     volts_in_bin = 0.5 / 46.0
 
     Q = 2 * abs(np.imag(s0) / np.real(s0))
-    A = c * np.imag(s0) * np.exp(-1j)
+    A = c * np.imag(s0)
     maxresp = abs(
         (c / (1j * np.imag(s0) - s0))
         + np.conj(c) / (1j * np.imag(s0) - np.conj(s0))
