@@ -98,33 +98,25 @@ def flip_results(results_filename: Path) -> None:
     logging.info(f"results mirrored, path: {results_filename}")
 
 
-def transform_phase(phase: NDArray[np.float64]) -> NDArray[np.float64]:
+def transform_phase(
+    phase: NDArray[np.float64],
+    shift: float = -1,
+    amplitude: float = np.pi / 2,
+    slope: float = 10,
+    final_shift: float = 0.3,
+) -> NDArray[np.float64]:
     """Transforms the input phase array using `Heaviside step function
     <https://en.wikipedia.org/wiki/Heaviside_step_function#Analytic_approximations>`_.
     Used for better interpretability of phase maps.
 
-    :param phase: Array of phase values
-    :return: An array of transformed phase values
+    :param phase: Array of phase values.
+    :param shift: Vertical shift of step function.
+    :param amplitude: Amplitude of step function.
+    :param slope: Slope of step function.
+    :param final_shift: Used to change colors for tranformed phase.
+    :return: An array of transformed phase values.
     """
-
-    a = -2.8 * 180 / np.pi
-    b = 2.40 * 180 / np.pi
-    c = 90
-    d = -180
-
-    k_1 = (d - c) / (b - a)
-    k_2 = (b - a) / (d - c)
-    m_1 = (c + d - k_1 * (a + b)) / 2
-    m_2 = (a + b - k_2 * (c + d)) / 2
-
-    phase *= 180 / np.pi
-    for i in range(phase.shape[0]):
-        for j in range(phase.shape[1]):
-            if a < phase[i, j] < b:
-                phase[i, j] = (90 * np.tanh((k_1 * phase[i, j] + m_1) / 5)) * k_2 + m_2
-    phase *= np.pi / 180
-
-    return phase
+    return amplitude * (np.tanh(slope * phase) + shift) + final_shift
 
 
 def get_domains_distribution(input_folder: Path) -> dict[str, NDArray[np.float64]]:
