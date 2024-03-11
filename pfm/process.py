@@ -5,6 +5,7 @@ Works with response data that is received after fitting PFM data
 using `pfm.fit` module.
 """
 
+import gc
 import logging
 import shutil
 from enum import Enum
@@ -80,6 +81,10 @@ def process_all_data(
                 results = fit_data(**data)
         for function in functions:
             function(results, results_subfolder)
+
+        del data
+        del results
+        gc.collect()
 
 
 def delete_pictures(_, folder: Path) -> None:
