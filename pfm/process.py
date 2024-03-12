@@ -82,6 +82,16 @@ def process_all_data(
             function(results, results_subfolder)
 
 
+def delete_pictures(_, folder: Path) -> None:
+    """Delete all pictures in the given folder (in place).
+
+    :param _: Unused. For compatibility with `process_all_data`.
+    :param folder: The folder to delete pictures from.
+    """
+    for file in folder.glob("**/*.png"):
+        file.unlink()
+
+
 def flip_results(results_filename: Path) -> None:
     """Flip the data in the given results file (in place). As a result,
     maps will be reflected horizontally. Can be used in case of wrong

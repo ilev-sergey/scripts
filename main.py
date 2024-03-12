@@ -8,13 +8,14 @@ from pfm.plot import (
     plot_phase,
     plot_piezo,
 )
-from pfm.process import Cache, process_all_data, save_results
+from pfm.process import Cache, delete_pictures, process_all_data, save_results
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 data_path = Path("data")
 results_path = Path("results")
 functions_to_apply = [
+    delete_pictures,
     plot_params,
     plot_piezo,
     plot_phase,
