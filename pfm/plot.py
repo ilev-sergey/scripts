@@ -136,7 +136,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
     abs = np.abs(results["A"])
-    _plot_map(fig, axs[0], abs, title="Abs")
+    _plot_map(fig, axs[0], abs, title="Amplitude")
 
     plt.tight_layout()
     fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
