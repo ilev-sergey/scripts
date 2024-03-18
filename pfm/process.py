@@ -79,10 +79,11 @@ def process_all_data(
                     logging.warning(f"skipping {datafile}: empty data")
                     continue
                 results = fit_data(**data)
+                del data
+
         for function in functions:
             function(results, results_subfolder)
 
-        del data
         del results
         gc.collect()
 
