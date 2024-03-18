@@ -200,7 +200,6 @@ def plot_hysteresis(
     plt.xlabel("Pulse voltage, V")
     plt.ylabel("Share of blue domains")
     plt.legend()
-    plt.savefig(output_folder / f"hysteresis {(sample)}.png", bbox_inches="tight")
 
 
 def copy_to_root(root_path: Path, name="phase.png") -> None:
