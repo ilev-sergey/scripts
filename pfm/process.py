@@ -67,22 +67,28 @@ def process_all_data(
             datafile.stem,
         )
         cache_enum = Cache(cache)
-        match cache_enum:
+        match cache_enum:  # checks only Mode.BASE PFM cache
             case Cache.SKIP if (results_subfolder / "results.npy").exists():
                 logging.info(f"skipping {datafile}: results exist")
                 continue
             case Cache.USE if (results_subfolder / "results.npy").exists():
                 results = load_results(results_subfolder / "results.npy")
             case Cache.IGNORE | _:
-                data = get_data(datafile)
+                data = get_data(
+                    datafile
+                )  # TODO: takes long time to return results, try async or change logic to return no more than one scan per call
                 if data["scan_pfm"].shape == (0,):
                     logging.warning(f"skipping {datafile}: empty data")
                     continue
                 results = fit_data(**data)
                 del data
 
-        for function in functions:
-            function(results, results_subfolder)
+        for name, result in results.items():
+            for function in functions:
+                if name == "PFM":
+                    function(result, results_subfolder)  # save PFM in main folder
+                else:
+                    function(result, results_subfolder / name)  # also create subfolder
 
         del results
         gc.collect()

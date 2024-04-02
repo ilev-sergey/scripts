@@ -16,6 +16,8 @@ from scipy.fft import fft  # type: ignore
 from scipy.signal import butter, filtfilt  # type: ignore
 from tqdm import trange  # type: ignore
 
+from pfm.read import Mode
+
 
 def fit_data(
     scan_pfm: NDArray[np.complex64],
@@ -23,7 +25,10 @@ def fit_data(
     metadata: dict,
     fc: float = 0.62e6,
     fspan: float = 195312.5,
-    **kwargs: NDArray[np.complex64]
+    scan_afam: NDArray[np.complex64] | None = None,
+    cal_afam: NDArray[np.complex64] | None = None,
+    scan_pfm_lf: NDArray[np.complex64] | None = None,
+    **kwargs: NDArray[np.complex64],
 ) -> dict[str, NDArray[np.complex64]]:
     r"""Fits PFM data at each point using `_vfit` to obtain response data.
 
@@ -32,59 +37,87 @@ def fit_data(
     :param metadata: Data containing info about the scan parameters.
     :param fc: The center frequency.
     :param fspan: The frequency span.
+    :param scan_afam: The AFAM scan data. Used in `Mode.AFAM_ENHANCED`.
+    :param cal_afam: The data for AFAM calibration. Used in `Mode.AFAM_ENHANCED`.
+    :param scan_pfm_lf: The PFM LF scan data. Used in `Mode.DFL_AND_LF`.
     :param \**kwargs: Additional keyword arguments for
         the fitting process.
 
-    :return: A dictionary containing the reponse data for
+    :return: A dictionary containing the dictionary with reponse data for each scan for
         each point in the scan data.
     """
+
+    def fit_scan(
+        data: NDArray[np.complex64], cal_data: NDArray[np.complex64] = cal_pfm
+    ) -> dict[str, NDArray[np.complex64]]:
+        """Fits the given scan data at each point.
+
+        :param data: The scan data.
+        :param cal_data: The calibration data for given scan.
+
+        :return: A dictionary containing response data for each point in the scan data.
+        """
+        logging.info("starting fitting process...")
+
+        sizex, sizey = scan_pfm.shape[:2]
+        # Initialization
+        keys = [
+            "A",
+            "f0",
+            "Q",
+            "D",
+            "h",
+            "c",
+            "AQ",
+            "s0",
+            "large",
+            "maxresp",
+            "displacement",
+            "piezomodule",
+        ]
+        results = {
+            key: np.full((sizex, sizey), np.nan, dtype="complex_") for key in keys
+        }
+        fs = np.linspace(fc - fspan / 2, fc + fspan / 2, 2 * HLEN)
+
+        for nyCurve in trange(sizey, desc="progress"):
+            for nxCurve in range(sizex):
+                data_in_point = data[nxCurve, nyCurve, :]
+                data_in_point = fft(data_in_point)
+                data_in_point = data_in_point / cal_data  # calibration # type: ignore
+
+                resp_pfm = np.flip(
+                    np.concatenate((data_in_point[-HLEN - 1 :], data_in_point[1:HLEN]))
+                )
+
+                A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, resp_pfm)
+
+                results["A"][nxCurve, nyCurve] = A
+                results["f0"][nxCurve, nyCurve] = abs(np.imag(s0))
+                results["Q"][nxCurve, nyCurve] = abs(np.imag(s0) / np.real(s0))
+                results["D"][nxCurve, nyCurve] = D
+                results["h"][nxCurve, nyCurve] = h
+                results["maxresp"][nxCurve, nyCurve] = maxresp
+                results["displacement"][nxCurve, nyCurve] = displacement
+                results["piezomodule"][nxCurve, nyCurve] = piezomodule
+                results["s0"][nxCurve, nyCurve] = s0
+
+        return results
+
     logging.info("starting fitting process...")
 
-    sizex, sizey = scan_pfm.shape[:2]
-
-    # Initialization
-    keys = [
-        "A",
-        "f0",
-        "Q",
-        "D",
-        "h",
-        "c",
-        "AQ",
-        "s0",
-        "large",
-        "maxresp",
-        "displacement",
-        "piezomodule",
-    ]
-
-    results = {key: np.full((sizex, sizey), np.nan, dtype="complex_") for key in keys}
-
-    if metadata["new_version"]:
+    if metadata["software_version"] == Mode.AFAM_EHNANCED:
         HLEN = 126  # Number of frequency bins
     else:
         HLEN = 510
 
-    for nyCurve in trange(sizey, desc="progress"):
-        for nxCurve in range(sizex):
-            indata = scan_pfm[nxCurve, nyCurve, :]
-            indata = fft(indata)
-            indata = indata / cal_pfm  # calibration # type: ignore
-
-            resp_pfm = np.flip(np.concatenate((indata[-HLEN - 1 :], indata[1:HLEN])))
-
-            fs = np.linspace(fc - fspan / 2, fc + fspan / 2, resp_pfm.size)
-            A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, resp_pfm)
-
-            results["A"][nxCurve, nyCurve] = A
-            results["f0"][nxCurve, nyCurve] = abs(np.imag(s0))
-            results["Q"][nxCurve, nyCurve] = abs(np.imag(s0) / np.real(s0))
-            results["D"][nxCurve, nyCurve] = D
-            results["h"][nxCurve, nyCurve] = h
-            results["maxresp"][nxCurve, nyCurve] = maxresp
-            results["displacement"][nxCurve, nyCurve] = displacement
-            results["piezomodule"][nxCurve, nyCurve] = piezomodule
-            results["s0"][nxCurve, nyCurve] = s0
+    results = {}
+    results["PFM"] = fit_scan(scan_pfm)
+    match metadata["software_version"]:
+        case Mode.AFAM_EHNANCED as AFAM:
+            results[AFAM] = fit_scan(scan_afam, cal_afam)
+        case Mode.DFL_AND_LF as DFL:
+            results[DFL] = fit_scan(scan_pfm_lf)
 
     logging.info("fitting is done")
 
