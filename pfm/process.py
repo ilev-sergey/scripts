@@ -74,23 +74,22 @@ def process_all_data(
             case Cache.USE if (results_subfolder / "results.npy").exists():
                 results = load_results(results_subfolder / "results.npy")
             case Cache.IGNORE | _:
-                data = get_data(
-                    datafile
-                )  # TODO: takes long time to return results, try async or change logic to return no more than one scan per call
-                if data["scan_pfm"].shape == (0,):
-                    logging.warning(f"skipping {datafile}: empty data")
-                    continue
-                results = fit_data(**data)
-                del data
+                for data_dict in get_data(datafile):
+                    if data_dict["data"].shape == (0,):
+                        logging.warning(f"skipping {datafile}: empty data")
+                        continue
+                    name, results = fit_data(**data_dict).values()
+                    for function in functions:
+                        if name == "PFM":
+                            function(
+                                results, results_subfolder
+                            )  # save PFM in main folder
+                        else:
+                            function(
+                                results, results_subfolder / name
+                            )  # create subfolders for other modes
 
-        for name, result in results.items():
-            for function in functions:
-                if name == "PFM":
-                    function(result, results_subfolder)  # save PFM in main folder
-                else:
-                    function(result, results_subfolder / name)  # also create subfolder
-
-        del results
+        del data_dict
         gc.collect()
 
 

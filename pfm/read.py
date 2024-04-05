@@ -11,6 +11,7 @@ from collections.abc import KeysView
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Generator
 
 import netCDF4  # type: ignore
 import numpy as np
@@ -48,15 +49,46 @@ def get_mode(groups: KeysView):
 
 def get_data(
     data_filename: Path | str, print_params: bool = False
-) -> dict[str, np.ndarray | None | dict[str, Mode]]:
-    """Loads data from the specified datafile and returns it in a
-    dictionary.
+) -> Generator[dict, None, None]:
+    """Extracts data from the specified datafile, yielding it piecemeal
+    for each AFM mode.
 
     :param data_filename: Path to the data file.
     :param print_params: If ``True``, the scan parameters are printed
         to a text file.
-    :return: Dictionary containing scan data.
+    :return: `Generator` containing dictionary with data for each AFM mode.
     """
+
+    def get_scan(scan_data, scan_cal):
+        """Helper function for extracting the scan data.
+
+        :param scan_data: Part of the dataset containing the data for specififc AFM mode
+        :param scan_cal: Part of the calibration data for specific AFM mode
+        :return: Dictionary containing arrays of complex scan data, calibration data and
+            software mode used during the measurement
+        """
+        rows = scan_data.variables["waveform"].shape[0] - 1
+        cols = scan_data.variables["waveform"].shape[1] - 1
+
+        real_calibrations = np.array(scan_cal[:, 0], dtype=np.float64)
+        imag_calibrations = np.array(scan_cal[:, 1], dtype=np.float64)
+        calibrations = real_calibrations + 1j * imag_calibrations
+
+        scan = []
+        for row in trange(rows, desc="progress"):
+            scan_col = []
+            for col in range(cols):
+                data_real = scan_data.variables["waveform"][row, col, :, 0]
+                data_imag = scan_data.variables["waveform"][row, col, :, 1]
+                data = data_real + 1j * data_imag
+                scan_col.append(data)
+            scan.append(scan_col)
+        return {
+            "data": np.array(scan),
+            "calibration_data": calibrations,
+            "software_version": software_version,
+        }
+
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
@@ -66,81 +98,26 @@ def get_data(
         logging.info("parameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
-    pfm = dataset.groups["data_pfm"]
-
     software_version = get_mode(dataset.groups.keys())
+
+    pfm = dataset.groups["data_pfm"]
+    calibrations_pfm = calibrations.variables["pfm"][:]
+    yield {"name": "PFM"} | get_scan(pfm, calibrations_pfm)
+
     match software_version:
         case Mode.AFAM_EHNANCED:
-            freq = dataset.groups["data_freq"]
+            calibrations_afam = calibrations.variables["afam"][:]
             afam = dataset.groups["data_afam"]
+            freq = dataset.groups["data_freq"]
+            yield {"name": "AFAM", "frequencies": freq} | get_scan(
+                afam, calibrations_afam
+            )
+
         case Mode.DFL_AND_LF:
             pfm_lf = dataset.groups["data_pfm_lf_tors"]
-
-    calibrations_pfm = calibrations.variables["pfm"][:]
-    real_calibrations_pfm = np.array(calibrations_pfm[:, 0], dtype=np.float64)
-    imag_calibrations_pfm = np.array(calibrations_pfm[:, 1], dtype=np.float64)
-    calibrations_pfm = real_calibrations_pfm + 1j * imag_calibrations_pfm
-
-    if software_version == Mode.AFAM_EHNANCED:
-        calibrations_afam = calibrations.variables["afam"][:]
-        real_calibrations_afam = np.array(calibrations_afam[:, 0], dtype=np.float64)
-        imag_calibrations_afam = np.array(calibrations_afam[:, 1], dtype=np.float64)
-        calibrations_afam = real_calibrations_afam + 1j * imag_calibrations_afam
-
-    rows = pfm.variables["waveform"].shape[0] - 1
-    cols = pfm.variables["waveform"].shape[1] - 1
-
-    scan_pfm = []
-    scan_afam = []
-    scan_pfm_lf = []
-    frequencies = []
-    for row in trange(rows, desc="progress"):
-        pfmcol = []
-        afamcol = []
-        pfmcol_lf = []
-        freqcol = []
-        for col in range(cols):
-            datareal_pfm = pfm.variables["waveform"][row, col, :, 0]
-            dataimag_pfm = pfm.variables["waveform"][row, col, :, 1]
-            data_pfm = datareal_pfm + 1j * dataimag_pfm
-            pfmcol.append(data_pfm)
-
-            if software_version == Mode.AFAM_EHNANCED:
-                data_freqs = freq.variables["waveform"][row, col]  # type: ignore
-                freqcol.append(data_freqs)
-
-                datareal_afam = afam.variables["waveform"][row, col, :, 0]
-                dataimag_afam = afam.variables["waveform"][row, col, :, 1]
-                data_afam = datareal_afam + 1j * dataimag_afam
-                afamcol.append(data_afam)
-
-            if software_version == Mode.DFL_AND_LF:
-                datareal_pfm_lf = pfm_lf.variables["waveform"][row, col, :, 0]
-                dataimag_pfm_lf = pfm_lf.variables["waveform"][row, col, :, 1]
-                data_pfm_lf = datareal_pfm_lf + 1j * dataimag_pfm_lf
-                pfmcol_lf.append(data_pfm_lf)
-
-        scan_pfm.append(pfmcol)
-        scan_afam.append(afamcol)
-        scan_pfm_lf.append(pfmcol_lf)
-        frequencies.append(freqcol)
-    dataset.close()
+            yield {"name": "PFM LF"} | get_scan(pfm_lf, calibrations_pfm)
 
     logging.info("data is loaded")
-
-    return {
-        "scan_pfm": np.array(scan_pfm),
-        "cal_pfm": np.array(calibrations_pfm),
-        "scan_afam": np.array(scan_afam),
-        "cal_afam": (
-            np.array(calibrations_afam)
-            if software_version == Mode.AFAM_EHNANCED
-            else None
-        ),
-        "scan_pfm_lf": np.array(scan_pfm_lf),
-        "frequencies": np.array(frequencies),
-        "metadata": {"software_version": software_version},
-    }
 
 
 def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64]]:
