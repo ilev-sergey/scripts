@@ -77,7 +77,7 @@ def process_all_data(
                 for data_dict in get_data(datafile):
                     if data_dict["data"].shape == (0,):
                         logging.warning(f"skipping {datafile}: empty data")
-                        continue
+                        break
                     name, results = fit_data(**data_dict).values()
                     for function in functions:
                         if name == "PFM":
