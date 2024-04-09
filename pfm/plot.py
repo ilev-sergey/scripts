@@ -17,6 +17,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import mpl_toolkits.axes_grid1  # type: ignore
 import numpy as np
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from numpy.typing import NDArray
 from scipy.stats import norm  # type: ignore
 
@@ -32,6 +33,8 @@ def _plot_map(
     vmax: float | None = None,
     quantiles: tuple[float, float] = (0.05, 0.95),
     cmap: Any = "grey",
+    size_nm: float = 800e-9,
+    scalebar: bool = True,
 ) -> None:
     """Plots a map of the given 2D data on the specified figure and
     axes. Used as as a helper function for other plot functions for
@@ -47,6 +50,21 @@ def _plot_map(
         Used only if **vmin** and **vmax** are not specified.
     :param cmap: The colormap to be used for plotting.
     """
+
+    def plot_scalebar(ax):
+        scalebar = AnchoredSizeBar(
+            ax.transData,
+            size=100e-9,
+            label="100 nm",
+            loc="lower right",
+            size_vertical=25e-9,
+            frameon=True,
+            color="black",
+            pad=0.2,
+            borderpad=0.3,
+        )
+        ax.add_artist(scalebar)
+
     vmin = vmin or float(np.quantile(data, quantiles[0]))
     vmax = vmax or float(np.quantile(data, quantiles[1]))
     image = ax.imshow(
@@ -56,9 +74,13 @@ def _plot_map(
         aspect="equal",
         vmin=vmin,
         vmax=vmax,
+        extent=(0, size_nm, 0, size_nm),
     )
     if title:
         ax.set_title(title)
+
+    if scalebar:
+        plot_scalebar(ax)
 
     # disable ticks and labels
     ax.tick_params(
