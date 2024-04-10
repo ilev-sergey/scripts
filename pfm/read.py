@@ -8,7 +8,7 @@ further processing and analysis.
 import logging
 import re
 from collections.abc import KeysView
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Generator
@@ -131,15 +131,16 @@ def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64
     return results
 
 
-def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match | None]:
+def parse_filename(
+    filename: Path | str,
+) -> dict[str, str | datetime | re.Match | None | float | timedelta]:
     """Extracts scan parameters from the datafile name if possible.
 
     :param filename: Path to datafile.
     :return: A dictionary containing the parsed elements including
         datetime, comment, voltage, and pulse time.
     """
-    filename = str(filename)
-    filename, ext = filename.rsplit(".", 1)
+    filename = Path(filename).stem
     lst = filename.split(" ", 1)
     if len(lst) == 1:
         dt, comment = *lst, ""
@@ -156,10 +157,28 @@ def parse_filename(filename: Path | str) -> dict[str, str | datetime | re.Match 
         seconds,
     ) = [int(elem) if elem.isdigit() else elem for elem in dt.split("_")]
     dt_obj = datetime(year, month, day, hours, minutes, seconds)
-    voltage_pattern = r"[-+]?\d+(\.\d+)?( [VvВв])?|fresh"
-    time_pattern = r"\d+(?:mcs|ms|s)"
-    voltage = re.search(voltage_pattern, comment)
-    pulse_time = re.search(time_pattern, comment)
+
+    voltage_pattern = r"([-+]?\d+(\.\d+)?|fresh)(?: [VvВв])?"
+    voltage_match = re.search(voltage_pattern, comment)
+    voltage = voltage_match.group(1) if voltage_match else None
+    if voltage_match:
+        voltage = voltage_match.group(0)
+        if voltage != "fresh":
+            voltage = float(voltage)
+
+    time_pattern = r"(\d+) ?(mcs|ms|s)"
+    pulse_time_match = re.search(time_pattern, comment)
+    pulse_time = None
+    if pulse_time_match:
+        value, unit = pulse_time_match.groups()
+        match unit:
+            case "mcs":
+                pulse_time = timedelta(microseconds=int(value))
+            case "ms":
+                pulse_time = timedelta(milliseconds=int(value))
+            case "s":
+                pulse_time = timedelta(seconds=int(value))
+
     return {
         "datetime": dt_obj,
         "comment": comment,
