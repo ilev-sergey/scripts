@@ -75,7 +75,7 @@ def process_all_data(
                 results = load_results(results_subfolder / "results.npy")
             case Cache.IGNORE | _:
                 for data_dict in get_data(datafile):
-                    if data_dict["data"].shape == (0,):
+                    if data_dict["data"].size == 0:
                         logging.warning(f"skipping {datafile}: empty data")
                         break
                     name, results = fit_data(**data_dict).values()

@@ -67,22 +67,20 @@ def get_data(
         :return: Dictionary containing arrays of complex scan data, calibration data and
             software mode used during the measurement
         """
-        rows = scan_data.variables["waveform"].shape[0] - 1
-        cols = scan_data.variables["waveform"].shape[1] - 1
+        rows = scan_data.shape[0]
+        cols = scan_data.shape[1]
+        bins = scan_data.shape[2]
 
         real_calibrations = np.array(scan_cal[:, 0], dtype=np.float64)
         imag_calibrations = np.array(scan_cal[:, 1], dtype=np.float64)
         calibrations = real_calibrations + 1j * imag_calibrations
 
-        scan = []
+        scan = np.zeros((rows, cols, bins), dtype=np.complex64)
         for row in trange(rows, desc="progress"):
-            scan_col = []
             for col in range(cols):
-                data_real = scan_data.variables["waveform"][row, col, :, 0]
-                data_imag = scan_data.variables["waveform"][row, col, :, 1]
-                data = data_real + 1j * data_imag
-                scan_col.append(data)
-            scan.append(scan_col)
+                data_real = scan_data[row, col, :, 0]
+                data_imag = scan_data[row, col, :, 1]
+                scan[row, col] = data_real + 1j * data_imag
         return {
             "data": np.array(scan),
             "calibration_data": calibrations,
@@ -100,14 +98,14 @@ def get_data(
     calibrations = dataset.groups["calibrations"]
     software_version = get_mode(dataset.groups.keys())
 
-    pfm = dataset.groups["data_pfm"]
+    pfm = dataset.groups["data_pfm"].variables["waveform"]
     calibrations_pfm = calibrations.variables["pfm"][:]
     yield {"name": "PFM"} | get_scan(pfm, calibrations_pfm)
 
     match software_version:
         case Mode.AFAM_EHNANCED:
             calibrations_afam = calibrations.variables["afam"][:]
-            afam = dataset.groups["data_afam"]
+            afam = dataset.groups["data_afam"].variables["waveform"]
             freq = dataset.groups["data_freq"]
             yield {"name": "AFAM", "frequencies": freq} | get_scan(
                 afam, calibrations_afam
