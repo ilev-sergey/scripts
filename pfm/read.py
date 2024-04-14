@@ -37,13 +37,31 @@ class Mode(StrEnum):
     """
     Version with 2 data channels (DFL and LF).
     """
+    SECOND_HARMONIC = "2nd harm"
+    """
+    Version with second harmonic detection.
+    """
 
 
-def get_mode(groups: KeysView):
-    if "data_freq" in groups:
+def get_mode(dataset: netCDF4.Dataset) -> Mode:
+    data_keys = dataset.groups.keys()
+
+    if "data_freq" in data_keys:
+        # check second harmonic
+        data = dataset.groups["data_pfm"].variables["waveform"]
+        spectrum = np.abs(
+            np.fft.fft(data[0, 0, :, 0])
+        )  # spectrum of response at first point
+        if (
+            spectrum.max() / np.quantile(spectrum, 0.99) > 10
+        ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
+            return Mode.SECOND_HARMONIC
+
         return Mode.AFAM_EHNANCED
-    if "data_pfm_lf_tors" in groups:
+
+    if "data_pfm_lf_tors" in data_keys:
         return Mode.DFL_AND_LF
+
     return Mode.BASE
 
 
@@ -100,14 +118,14 @@ def get_data(
         logging.info("parameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
-    software_version = get_mode(dataset.groups.keys())
+    software_version = get_mode(dataset)
 
     pfm = dataset.groups["data_pfm"].variables["waveform"]
     calibrations_pfm = calibrations.variables["pfm"][:]
     yield {"scan": "PFM"} | get_scan(pfm, calibrations_pfm)
 
     match software_version:
-        case Mode.AFAM_EHNANCED:
+        case Mode.AFAM_EHNANCED | Mode.SECOND_HARMONIC:
             calibrations_afam = calibrations.variables["afam"][:]
             afam = dataset.groups["data_afam"].variables["waveform"]
             freq = dataset.groups["data_freq"]

@@ -37,8 +37,8 @@ def fit_data(
     """
     logging.info(f"starting {scan} data fitting...")
 
-    if software_version == Mode.AFAM_EHNANCED:
-        bin_count = 126 * 2  # Number of frequency bins
+    if software_version in (Mode.AFAM_EHNANCED, Mode.SECOND_HARMONIC):
+        bin_count = 127 * 2  # Number of frequency bins
     else:
         bin_count = 510 * 2
 
@@ -66,17 +66,31 @@ def fit_data(
     for row in trange(size_x, desc=f"{scan}"):
         for col in range(size_y):
             data_in_point = data[row, col, :]
-            data_in_point /= calibration_data  # type: ignore
 
-            data_to_fit = np.flip(data_in_point)
-            data_to_fit = fft(data_to_fit)
-            data_to_fit = np.concatenate(
-                (
-                    data_to_fit[-bin_count // 2 :],
-                    data_to_fit[: bin_count // 2],
+            data_to_fit = fft(data_in_point)
+            data_to_fit /= calibration_data  # type: ignore
+            data_to_fit = np.flip(data_to_fit)
+
+            if (
+                software_version == Mode.SECOND_HARMONIC and scan == "PFM"
+            ):  # skip fitting for second harmonic
+                max_bin = np.abs(fft(data_to_fit)).argmax()
+                A = data_to_fit[4]
+                s0 = 0 + 1e-10
+                D = 0
+                h = 0
+                maxresp = 0
+                displacement = 0
+                piezomodule = 0
+
+            else:
+                data_to_fit = np.concatenate(
+                    (
+                        data_to_fit[-bin_count // 2 :],
+                        data_to_fit[: bin_count // 2],
+                    )
                 )
-            )
-            A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, data_to_fit)
+                A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, data_to_fit)
 
             results["amplitude"][row, col] = A
             results["resonant_frequency"][row, col] = abs(np.imag(s0))
