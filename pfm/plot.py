@@ -115,7 +115,7 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-    phase = transform_phase(np.angle(results["A"]))
+    phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
         fig,
@@ -126,8 +126,8 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
         vmin=-np.pi,
         vmax=np.pi,
     )
-    abs = np.abs(results["A"])
-    _plot_map(fig, axs[0, 0], abs, title="Abs")
+    abs = np.abs(results[key := "amplitude"])
+    _plot_map(fig, axs[0, 0], abs, title=key.capitalize())
     _plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
 
     fig.delaxes(axs[1, 1])
@@ -146,7 +146,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-    phase = transform_phase(np.angle(results["A"]))
+    phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
         fig,
@@ -157,8 +157,8 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
         vmin=-np.pi,
         vmax=np.pi,
     )
-    abs = np.abs(results["A"])
-    _plot_map(fig, axs[0], abs, title="Amplitude")
+    abs = np.abs(results[key := "amplitude"])
+    _plot_map(fig, axs[0], abs, title=key.capitalize())
 
     plt.tight_layout()
     fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
@@ -196,7 +196,7 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
 
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    phase = np.angle(results["A"])
+    phase = np.angle(results["amplitude"])
     save_image(phase)
 
     if transformed:
@@ -213,9 +213,9 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
-    amplitude = np.abs(results["A"])
-    _plot_map(fig, ax, amplitude, title="Amplitude")
-    fig.savefig(output_folder / "amplitude.png", bbox_inches="tight")
+    amplitude = np.abs(results[key := "amplitude"])
+    _plot_map(fig, ax, amplitude, title=key.capitalize())
+    fig.savefig(output_folder / f"{key}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -233,7 +233,7 @@ def plot_params(results: dict, output_folder: Path) -> None:
 
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
-    phase = np.angle(results["A"])
+    phase = np.angle(results["amplitude"])
     _plot_map(
         fig,
         axs[0, 1],
@@ -244,11 +244,28 @@ def plot_params(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
 
-    _plot_map(fig, axs[0, 0], np.abs(results["A"]), title="Abs")
-    _plot_map(fig, axs[0, 2], np.abs(results["f0"]), title="Freq")
-    _plot_map(fig, axs[1, 0], np.abs(results["Q"]), title="Q", quantiles=(0.1, 0.9))
-    _plot_map(fig, axs[1, 1], np.abs(results["D"]), title="D", quantiles=(0.1, 0.9))
-    _plot_map(fig, axs[1, 2], np.abs(results["h"]), title="H", quantiles=(0.0, 1.0))
+    _plot_map(
+        fig, axs[0, 0], np.abs(results[key := "amplitude"]), title=key.capitalize()
+    )
+    _plot_map(
+        fig,
+        axs[0, 2],
+        np.abs(results[key := "resonant_frequency"]),
+        title=key.capitalize(),
+    )
+    _plot_map(
+        fig,
+        axs[1, 0],
+        np.abs(results[key := "Q_factor"]),
+        title=key,
+        quantiles=(0.1, 0.9),
+    )
+    _plot_map(
+        fig, axs[1, 1], np.abs(results[key := "D"]), title=key, quantiles=(0.1, 0.9)
+    )
+    _plot_map(
+        fig, axs[1, 2], np.abs(results[key := "h"]), title=key, quantiles=(0.0, 1.0)
+    )
 
     plt.tight_layout()
     fig.savefig(output_folder / "params.png")

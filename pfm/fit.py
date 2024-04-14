@@ -22,10 +22,10 @@ from pfm.read import Mode
 def fit_data(
     data: NDArray[np.complex64],
     calibration_data: NDArray[np.complex64],
-    name: str,
+    scan: str,
     software_version: Mode,
-    fc: float = 0.62e6,
-    fspan: float = 195312.5,
+    central_freq: float = 0.62e6,  # TODO: get from metadata
+    freq_span: float = 195312.5,
     **kwargs: NDArray[np.complex64],
 ) -> dict[str, str | dict[str, NDArray[np.complex64]]]:
     r"""Fits the given scan data at each point using `_vfit` to obtain response data.
@@ -35,61 +35,66 @@ def fit_data(
 
     :return: A dictionary containing response data for each point in the scan data.
     """
-    logging.info(f"starting {name} data fitting...")
+    logging.info(f"starting {scan} data fitting...")
 
     if software_version == Mode.AFAM_EHNANCED:
-        HLEN = 126  # Number of frequency bins
+        bin_count = 126 * 2  # Number of frequency bins
     else:
-        HLEN = 510
+        bin_count = 510 * 2
 
-    sizex, sizey = data.shape[:2]
+    size_x, size_y = data.shape[:2]
+    logging.debug(
+        f"size: {size_x}x{size_y}pt, {bin_count=}, {scan=}, {software_version=}"
+    )
     # Initialization
     keys = [
-        "A",
-        "f0",
-        "Q",
+        "amplitude",
+        "resonant_frequency",
+        "Q_factor",
         "D",
         "h",
-        "c",
-        "AQ",
-        "s0",
-        "large",
-        "maxresp",
+        "max_response",
         "displacement",
         "piezomodule",
+        "s0",
     ]
-    results = {key: np.full((sizex, sizey), np.nan, dtype="complex_") for key in keys}
-    fs = np.linspace(fc - fspan / 2, fc + fspan / 2, 2 * HLEN)
+    results = {key: np.full((size_x, size_y), np.nan, dtype="complex_") for key in keys}
+    fs = np.linspace(
+        central_freq - freq_span / 2, central_freq + freq_span / 2, bin_count
+    )
 
-    for nyCurve in trange(sizey, desc="progress"):
-        for nxCurve in range(sizex):
-            data_in_point = data[nxCurve, nyCurve, :]
-            data_in_point = fft(data_in_point)
-            data_in_point = data_in_point / calibration_data  # type: ignore
+    for row in trange(size_x, desc=f"{scan}"):
+        for col in range(size_y):
+            data_in_point = data[row, col, :]
+            data_in_point /= calibration_data  # type: ignore
 
-            resp_pfm = np.flip(
-                np.concatenate((data_in_point[-HLEN - 1 :], data_in_point[1:HLEN]))
+            data_to_fit = np.flip(data_in_point)
+            data_to_fit = fft(data_to_fit)
+            data_to_fit = np.concatenate(
+                (
+                    data_to_fit[-bin_count // 2 :],
+                    data_to_fit[: bin_count // 2],
+                )
             )
+            A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, data_to_fit)
 
-            A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, resp_pfm)
-
-            results["A"][nxCurve, nyCurve] = A
-            results["f0"][nxCurve, nyCurve] = abs(np.imag(s0))
-            results["Q"][nxCurve, nyCurve] = abs(np.imag(s0) / np.real(s0))
-            results["D"][nxCurve, nyCurve] = D
-            results["h"][nxCurve, nyCurve] = h
-            results["maxresp"][nxCurve, nyCurve] = maxresp
-            results["displacement"][nxCurve, nyCurve] = displacement
-            results["piezomodule"][nxCurve, nyCurve] = piezomodule
-            results["s0"][nxCurve, nyCurve] = s0
+            results["amplitude"][row, col] = A
+            results["resonant_frequency"][row, col] = abs(np.imag(s0))
+            results["Q_factor"][row, col] = abs(np.imag(s0) / np.real(s0))
+            results["D"][row, col] = D
+            results["h"][row, col] = h
+            results["max_response"][row, col] = maxresp
+            results["displacement"][row, col] = displacement
+            results["piezomodule"][row, col] = piezomodule
+            results["s0"][row, col] = s0
 
     logging.info("fitting is done")
 
-    return {"name": name, "response_data": results}
+    return {"scan": scan, "response_data": results}
 
 
 def _vfit(
-    fs: NDArray[np.float64], data: NDArray[np.complex64], plot: bool = False
+    freq_span: NDArray[np.float64], data: NDArray[np.complex64], plot: bool = False
 ) -> Any:
     """Uses `vector fitting <https://scikit-rf.readthedocs.io/en/latest/tutorials/VectorFitting.html>`_
     algorithm for fitting BE PFM data in a single point
@@ -103,7 +108,9 @@ def _vfit(
     :return: Response data for the single point.
     """
 
-    def iter(pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64]):
+    def iter(
+        pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64], n: int = 1
+    ):
         """Performs vector fitting iteration
 
         # TODO: add descriptions
@@ -112,43 +119,43 @@ def _vfit(
         :param data: _description_.
         :return: _description_.
         """
-        real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
-        imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
+        for _ in range(n):
+            real = 1.0 / (s - pole) + 1.0 / (s - np.conj(pole))
+            imag = 1j / (s - pole) - 1j / (s - np.conj(pole))
 
-        lhs = np.zeros((len(fs), 4 + 2), dtype=complex)
-        lhs[:, :4] = np.column_stack((real, imag, -data * real, -data * imag))
-        lhs[:, -2] = 1
-        lhs[:, -1] = s
-        lhs = np.vstack((np.real(lhs), np.imag(lhs)))
+            lhs = np.zeros((len(freq_span), 4 + 2), dtype=complex)
+            lhs[:, :4] = np.column_stack((real, imag, -data * real, -data * imag))
+            lhs[:, -2] = 1
+            lhs[:, -1] = s
+            lhs = np.vstack((np.real(lhs), np.imag(lhs)))
 
-        rhs = data
-        rhs = np.concatenate((np.real(rhs), np.imag(rhs)))
-        res = np.linalg.pinv(lhs) @ rhs
+            rhs = data
+            rhs = np.concatenate((np.real(rhs), np.imag(rhs)))
+            res = np.linalg.pinv(lhs) @ rhs
 
-        p_real, p_imag = np.real(pole), np.imag(pole)
-        arr1 = np.array([[p_real, p_imag], [-p_imag, p_real]]).reshape(2, 2)
-        arr2 = np.array([[2, 0]]).reshape(2, 1)
-        arr3 = res[2:4].reshape(1, 2)
-        rm = arr1 - arr2 @ arr3
+            p_real, p_imag = np.real(pole), np.imag(pole)
+            arr1 = np.array([[p_real, p_imag], [-p_imag, p_real]]).reshape(2, 2)
+            arr2 = np.array([[2, 0]]).reshape(2, 1)
+            arr3 = res[2:4].reshape(1, 2)
+            rm = arr1 - arr2 @ arr3
 
-        poles = np.linalg.eigvals(rm)
-        cs = res[0] + 1j * res[1]
-        d = res[-2]
-        h = res[-1]
+            poles = np.linalg.eigvals(rm)
+            cs = res[0] + 1j * res[1]
+            d = res[-2]
+            h = res[-1]
+            pole = poles[0]
 
-        return poles, cs, d, h
+        return pole, cs, d, h
 
-    s = 1j * fs
-    fc = np.mean(fs)
+    s = 1j * freq_span
+    fc = np.mean(freq_span)
     s0 = [-fc / 100 + 1j * fc]
 
     niters = 30
     fb, fa = butter(8, 0.1)
     dfilt = filtfilt(fb, fa, data, padlen=3 * (max(len(fb), len(fa)) - 1))
 
-    for _ in range(niters):
-        s0, c, D, h = iter(pole=s0, s=s, data=dfilt)
-        s0 = s0[0]
+    s0, c, D, h = iter(pole=s0, s=s, data=dfilt, n=niters)
 
     Avg = 70
     sensitivity = 2900
@@ -166,7 +173,7 @@ def _vfit(
     piezomodule = maxresp * sensitivity / (Avg * Q * volts_in_bin)
 
     if plot:
-        mfs = fs
+        mfs = freq_span
         ms = 1j * mfs
 
         modfun = lambda s: (c / (s - s0) + c / (s - np.conj(s0)) + D + h * s)
@@ -176,38 +183,38 @@ def _vfit(
 
         plt.subplot(3, 2, 1)
         plt.title("Abs")
-        plt.plot(fs, abs(data) * 2, "g")
-        plt.plot(fs, abs(dfilt) * 2, "k")
+        plt.plot(freq_span, abs(data) * 2, "g")
+        plt.plot(freq_span, abs(dfilt) * 2, "k")
         plt.plot(mfs, abs(resp) * 2, "r.")
 
         plt.subplot(3, 2, 2)
-        plt.plot(fs, np.angle(data), "c", label="data")
-        plt.plot(fs, np.angle(dfilt), "k", label="dfilt")
+        plt.plot(freq_span, np.angle(data), "c", label="data")
+        plt.plot(freq_span, np.angle(dfilt), "k", label="dfilt")
         plt.plot(mfs, np.unwrap(np.angle(resp)), "r.", label="resp")
         plt.legend()
 
         plt.subplot(3, 2, 5)
         plt.title("Abs(Resp - D - s*h)")
-        plt.plot(fs, np.abs(data - D - ms * h) * 2, "g", label="data")
-        plt.plot(fs, np.abs(dfilt - D - ms * h) * 2, "k", label="dfilt")
-        plt.plot(fs, np.abs(resp - D - ms * h) * 2, "r.", label="resp")
+        plt.plot(freq_span, np.abs(data - D - ms * h) * 2, "g", label="data")
+        plt.plot(freq_span, np.abs(dfilt - D - ms * h) * 2, "k", label="dfilt")
+        plt.plot(freq_span, np.abs(resp - D - ms * h) * 2, "r.", label="resp")
         plt.legend()
 
         plt.subplot(3, 2, 6)
         plt.title("angle(Resp - D - s*h)")
-        plt.plot(fs, np.angle(data - D - ms * h), "c", label="data")
-        plt.plot(fs, np.angle(dfilt - D - ms * h), "k", label="dfilt")
-        plt.plot(fs, np.angle(resp - D - ms * h), "r.", label="resp")
+        plt.plot(freq_span, np.angle(data - D - ms * h), "c", label="data")
+        plt.plot(freq_span, np.angle(dfilt - D - ms * h), "k", label="dfilt")
+        plt.plot(freq_span, np.angle(resp - D - ms * h), "r.", label="resp")
         plt.legend()
 
         plt.subplot(3, 2, 3)
         plt.plot(mfs, np.real(resp), "m", label="resp")
-        plt.plot(fs, np.real(data), "b", label="data")
+        plt.plot(freq_span, np.real(data), "b", label="data")
         plt.legend()
 
         plt.subplot(3, 2, 4)
         plt.plot(mfs, np.imag(resp), "m", label="resp")
-        plt.plot(fs, np.imag(data), "b", label="data")
+        plt.plot(freq_span, np.imag(data), "b", label="data")
         plt.legend()
 
         delay = 0.5

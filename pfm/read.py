@@ -90,6 +90,10 @@ def get_data(
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
 
+    cols = dataset.groups["data_pfm"].variables["waveform"].shape[1]
+    if cols == 0:
+        yield {"data": None}
+
     if print_params:
         with open("parameters" + ".txt", "w") as file:
             file.write(str(dataset) + "\n")
@@ -100,20 +104,20 @@ def get_data(
 
     pfm = dataset.groups["data_pfm"].variables["waveform"]
     calibrations_pfm = calibrations.variables["pfm"][:]
-    yield {"name": "PFM"} | get_scan(pfm, calibrations_pfm)
+    yield {"scan": "PFM"} | get_scan(pfm, calibrations_pfm)
 
     match software_version:
         case Mode.AFAM_EHNANCED:
             calibrations_afam = calibrations.variables["afam"][:]
             afam = dataset.groups["data_afam"].variables["waveform"]
             freq = dataset.groups["data_freq"]
-            yield {"name": "AFAM", "frequencies": freq} | get_scan(
+            yield {"scan": "AFAM", "frequencies": freq} | get_scan(
                 afam, calibrations_afam
             )
 
         case Mode.DFL_AND_LF:
-            pfm_lf = dataset.groups["data_pfm_lf_tors"]
-            yield {"name": "PFM LF"} | get_scan(pfm_lf, calibrations_pfm)
+            pfm_lf = dataset.groups["data_pfm_lf_tors"].variables["waveform"]
+            yield {"scan": "PFM LF"} | get_scan(pfm_lf, calibrations_pfm)
 
     logging.info("data is loaded")
 
