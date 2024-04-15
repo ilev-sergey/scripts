@@ -8,6 +8,7 @@ from pfm.process import Cache, delete_pictures, process_all_data, save_results
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # to remove debug messages from matplotlib
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
+logging.getLogger("multiprocessing").setLevel(logging.WARNING)
 
 
 def main():
