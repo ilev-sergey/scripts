@@ -70,12 +70,18 @@ def fit_data(
             data_to_fit = fft(data_in_point)
             data_to_fit /= calibration_data  # type: ignore
             data_to_fit = np.flip(data_to_fit)
+            data_to_fit = np.concatenate(
+                (
+                    data_to_fit[-bin_count // 2 :],
+                    data_to_fit[: bin_count // 2],
+                )
+            )
 
             if (
                 software_version == Mode.SECOND_HARMONIC and scan == "PFM"
             ):  # skip fitting for second harmonic
-                max_bin = np.abs(fft(data_to_fit)).argmax()
-                A = data_to_fit[4]
+                second_harm_bin = np.abs(data_to_fit).argmax()
+                A = data_to_fit[second_harm_bin]
                 s0 = 0 + 1e-10
                 D = 0
                 h = 0
@@ -84,12 +90,6 @@ def fit_data(
                 piezomodule = 0
 
             else:
-                data_to_fit = np.concatenate(
-                    (
-                        data_to_fit[-bin_count // 2 :],
-                        data_to_fit[: bin_count // 2],
-                    )
-                )
                 A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, data_to_fit)
 
             results["amplitude"][row, col] = A
