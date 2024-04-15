@@ -7,6 +7,7 @@ used for further analysis of the ferroelectric material properties.
 """
 
 import logging
+from functools import partial
 from typing import Any
 
 import numpy as np
@@ -14,9 +15,56 @@ from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 from scipy.fft import fft  # type: ignore
 from scipy.signal import butter, filtfilt  # type: ignore
-from tqdm import trange  # type: ignore
+from tqdm import tqdm  # type: ignore
 
 from pfm.read import Mode
+
+
+def fit_line(
+    line_data,
+    calibration_data,
+    bin_count,
+    central_freq,
+    freq_span,
+    software_version,
+    scan,
+):
+    """Fits the given line data using `_vfit` to obtain response data.
+    Used as a task for `Pool`.
+    """
+    results_line = []
+    fs = np.linspace(
+        central_freq - freq_span / 2, central_freq + freq_span / 2, bin_count
+    )
+    for row in range(line_data.shape[0]):
+        data_in_point = line_data[row, :]
+
+        data_to_fit = fft(data_in_point)
+        data_to_fit = data_to_fit / calibration_data  # type: ignore
+        data_to_fit = np.flip(data_to_fit)
+        data_to_fit = np.concatenate(
+            (data_to_fit[-bin_count // 2 :], data_to_fit[: bin_count // 2])
+        )
+
+        if (
+            software_version == Mode.SECOND_HARMONIC and scan == "PFM"
+        ):  # skip fitting for second harmonic
+            second_harm_bin = np.abs(data_to_fit).argmax()
+            A = data_to_fit[second_harm_bin]
+            s0 = 0 + 1e-10
+            D = 0
+            h = 0
+            maxresp = 0
+            displacement = 0
+            piezomodule = 0
+            result_in_point = (A, s0, D, h, maxresp, displacement, piezomodule)
+
+        else:
+            result_in_point = _vfit(fs, data_to_fit)
+
+        results_line.append(result_in_point)
+
+    return results_line
 
 
 def fit_data(
@@ -46,6 +94,7 @@ def fit_data(
     logging.debug(
         f"size: {size_x}x{size_y}pt, {bin_count=}, {scan=}, {software_version=}"
     )
+
     # Initialization
     keys = [
         "amplitude",
@@ -59,48 +108,31 @@ def fit_data(
         "s0",
     ]
     results = {key: np.full((size_x, size_y), np.nan, dtype="complex_") for key in keys}
-    fs = np.linspace(
-        central_freq - freq_span / 2, central_freq + freq_span / 2, bin_count
+
+    from pfm.pool import pool
+
+    task = partial(
+        fit_line,
+        calibration_data=calibration_data,
+        bin_count=bin_count,
+        central_freq=central_freq,
+        freq_span=freq_span,
+        software_version=software_version,
+        scan=scan,
     )
+    a = list(tqdm(pool.imap(task, data), total=size_x, desc="progress"))
+    a = np.array(a)
 
-    for row in trange(size_x, desc=f"{scan}"):
-        for col in range(size_y):
-            data_in_point = data[row, col, :]
-
-            data_to_fit = fft(data_in_point)
-            data_to_fit /= calibration_data  # type: ignore
-            data_to_fit = np.flip(data_to_fit)
-            data_to_fit = np.concatenate(
-                (
-                    data_to_fit[-bin_count // 2 :],
-                    data_to_fit[: bin_count // 2],
-                )
-            )
-
-            if (
-                software_version == Mode.SECOND_HARMONIC and scan == "PFM"
-            ):  # skip fitting for second harmonic
-                second_harm_bin = np.abs(data_to_fit).argmax()
-                A = data_to_fit[second_harm_bin]
-                s0 = 0 + 1e-10
-                D = 0
-                h = 0
-                maxresp = 0
-                displacement = 0
-                piezomodule = 0
-
-            else:
-                A, s0, D, h, maxresp, displacement, piezomodule = _vfit(fs, data_to_fit)
-
-            results["amplitude"][row, col] = A
-            results["resonant_frequency"][row, col] = abs(np.imag(s0))
-            results["Q_factor"][row, col] = abs(np.imag(s0) / np.real(s0))
-            results["D"][row, col] = D
-            results["h"][row, col] = h
-            results["max_response"][row, col] = maxresp
-            results["displacement"][row, col] = displacement
-            results["piezomodule"][row, col] = piezomodule
-            results["s0"][row, col] = s0
+    A, s0, D, h, maxresp, displacement, piezomodule = np.split(a, 7, axis=2)
+    results["amplitude"] = A
+    results["resonant_frequency"] = abs(np.imag(s0))
+    results["Q_factor"] = abs(np.imag(s0) / np.real(s0))
+    results["D"] = D
+    results["h"] = h
+    results["max_response"] = maxresp
+    results["displacement"] = displacement
+    results["piezomodule"] = piezomodule
+    results["s0"] = s0
 
     logging.info("fitting is done")
 

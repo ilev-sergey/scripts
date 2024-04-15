@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import pfm.pool
 from pfm.plot import plot_amp_phase, plot_amp_phase_log, plot_params, plot_piezo
 from pfm.process import Cache, delete_pictures, process_all_data, save_results
 
@@ -24,4 +25,5 @@ def main():
 
 
 if __name__ == "__main__":
+    pfm.pool.init()
     main()
