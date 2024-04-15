@@ -7,9 +7,11 @@ further processing and analysis.
 
 import logging
 import re
-from datetime import datetime
+from collections.abc import KeysView
+from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, Generator, List, Union
 
 import netCDF4  # type: ignore
 import numpy as np
@@ -17,19 +19,99 @@ from numpy.typing import NDArray
 from tqdm import trange  # type: ignore
 
 
+class Mode(Enum):
+    """
+    Enum used to specify which mode was used during measurements
+    for correct data processing.
+    """
+
+    BASE = 0
+    """
+    Default BE PFM version.
+    """
+    AFAM_EHNANCED = 1
+    """
+    Sped-up version that uses AFAM enhanced resonanse tracking.
+    """
+    DFL_AND_LF = 2
+    """
+    Version with 2 data channels (DFL and LF).
+    """
+    SECOND_HARMONIC = 3
+    """
+    Version with second harmonic detection.
+    """
+
+
+def get_mode(dataset: netCDF4.Dataset) -> Mode:
+    data_keys = dataset.groups.keys()
+
+    if "data_freq" in data_keys:
+        # check second harmonic
+        data = dataset.groups["data_pfm"].variables["waveform"]
+        calibrations = dataset.groups["calibrations"].variables["pfm"]
+        spectrum = np.abs(np.fft.fft(data[0, 0, :, 0]) / calibrations[:, 0])[
+            :127
+        ]  # spectrum of response at first point
+        if (
+            spectrum.max() / np.quantile(spectrum, 0.99) > 5
+        ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
+            return Mode.SECOND_HARMONIC
+
+        return Mode.AFAM_EHNANCED
+
+    if "data_pfm_lf_tors" in data_keys:
+        return Mode.DFL_AND_LF
+
+    return Mode.BASE
+
+
 def get_data(
     data_filename: Union[Path, str], print_params: bool = False
-) -> Dict[str, Union[np.ndarray, Dict[str, bool]]]:
-    """Loads data from the specified datafile and returns it in a
-    dictionary.
+) -> Generator[dict, None, None]:
+    """Extracts data from the specified datafile, yielding it piecemeal
+    for each AFM mode.
 
     :param data_filename: Path to the data file.
     :param print_params: If ``True``, the scan parameters are printed
         to a text file.
-    :return: Dictionary containing scan data.
+    :return: `Generator` containing dictionary with data for each AFM mode.
     """
+
+    def get_scan(scan_data, scan_cal):
+        """Helper function for extracting the scan data.
+
+        :param scan_data: Part of the dataset containing the data for specififc AFM mode
+        :param scan_cal: Part of the calibration data for specific AFM mode
+        :return: Dictionary containing arrays of complex scan data, calibration data and
+            software mode used during the measurement
+        """
+        rows = scan_data.shape[0]
+        cols = scan_data.shape[1]
+        bins = scan_data.shape[2]
+
+        real_calibrations = np.array(scan_cal[:, 0], dtype=np.float64)
+        imag_calibrations = np.array(scan_cal[:, 1], dtype=np.float64)
+        calibrations = real_calibrations + 1j * imag_calibrations
+
+        scan = np.zeros((rows, cols, bins), dtype=np.complex64)
+        for row in trange(rows, desc="progress"):
+            for col in range(cols):
+                data_real = scan_data[row, col, :, 0]
+                data_imag = scan_data[row, col, :, 1]
+                scan[row, col] = data_real + 1j * data_imag
+        return {
+            "data": np.array(scan),
+            "calibration_data": calibrations,
+            "software_version": software_version,
+        }
+
     logging.info(f"loading data from {data_filename}")
     dataset = netCDF4.Dataset(data_filename, "r", format="NETCDF4")
+
+    cols = dataset.groups["data_pfm"].variables["waveform"].shape[1]
+    if cols == 0:
+        yield {"data": None}
 
     if print_params:
         with open("parameters" + ".txt", "w") as file:
@@ -37,62 +119,23 @@ def get_data(
         logging.info("parameters.txt created")
 
     calibrations = dataset.groups["calibrations"]
-    pfm = dataset.groups["data_pfm"]
-    afam = dataset.groups["data_afam"]
+    software_version = get_mode(dataset)
 
-    new_version = "data_freq" in dataset.groups.keys()
-    if new_version:
-        freq = dataset.groups["data_freq"]
-
+    pfm = dataset.groups["data_pfm"].variables["waveform"]
     calibrations_pfm = calibrations.variables["pfm"][:]
-    real_calibrations_pfm = np.array(calibrations_pfm[:, 0], dtype=np.float64)
-    imag_calibrations_pfm = np.array(calibrations_pfm[:, 1], dtype=np.float64)
-    calibrations_pfm = real_calibrations_pfm + 1j * imag_calibrations_pfm
+    yield {**get_scan(pfm, calibrations_pfm), "scan": "PFM"}
 
-    calibrations_afam = calibrations.variables["afam"][:]
-    real_calibrations_afam = np.array(calibrations_afam[:, 0], dtype=np.float64)
-    imag_calibrations_afam = np.array(calibrations_afam[:, 1], dtype=np.float64)
-    calibrations_afam = real_calibrations_afam + 1j * imag_calibrations_afam
+    if software_version in (Mode.AFAM_EHNANCED, Mode.SECOND_HARMONIC):
+        calibrations_afam = calibrations.variables["afam"][:]
+        afam = dataset.groups["data_afam"].variables["waveform"]
+        freq = dataset.groups["data_freq"]
+        yield {**get_scan(afam, calibrations_afam), "scan": "AFAM", "frequencies": freq}
 
-    rows = pfm.variables["waveform"].shape[0] - 1
-    cols = pfm.variables["waveform"].shape[1]
-
-    scan_pfm = []
-    scan_afam = []
-    frequencies = []
-    for row in trange(rows, desc="progress"):
-        pfmcol = []
-        afamcol: List[complex] = []
-        freqcol = []
-        for col in range(cols):
-            datareal_pfm = pfm.variables["waveform"][row, col, :, 0]
-            dataimag_pfm = pfm.variables["waveform"][row, col, :, 1]
-            # datareal_afam = afam.variables["waveform"][row, col, :, 0]
-            # dataimag_afam = afam.variables["waveform"][row, col, :, 1]
-            data_pfm = datareal_pfm + 1j * dataimag_pfm
-            # data_afam = datareal_afam + 1j * dataimag_afam
-            pfmcol.append(data_pfm)
-            # afamcol.append(data_afam)
-
-            if new_version:
-                data_freqs = freq.variables["waveform"][row, col]  # type: ignore
-                freqcol.append(data_freqs)
-
-        scan_pfm.append(pfmcol)
-        scan_afam.append(afamcol)
-        frequencies.append(freqcol)
-    dataset.close()
+    elif software_version == Mode.DFL_AND_LF:
+        pfm_lf = dataset.groups["data_pfm_lf_tors"].variables["waveform"]
+        yield {**get_scan(pfm_lf, calibrations_pfm), "scan": "PFM LF"}
 
     logging.info("data is loaded")
-
-    return {
-        "scan_pfm": np.array(scan_pfm),
-        "scan_afam": np.array(scan_afam),
-        "cal_pfm": np.array(calibrations_pfm),
-        "cal_afam": np.array(calibrations_afam),
-        "frequencies": np.array(frequencies),
-        "metadata": {"new_version": new_version},  # | vars(dataset),
-    }
 
 
 def load_results(
@@ -109,16 +152,15 @@ def load_results(
 
 
 def parse_filename(
-    filename: Union[Path, str],
-) -> Dict[str, Union[str, datetime, re.Match, None]]:
+    filename: Union[Path, str]
+) -> Dict[str, Union[str, datetime, re.Match, None, float, timedelta]]:
     """Extracts scan parameters from the datafile name if possible.
 
     :param filename: Path to datafile.
     :return: A dictionary containing the parsed elements including
         datetime, comment, voltage, and pulse time.
     """
-    filename = str(filename)
-    filename, ext = filename.rsplit(".", 1)
+    filename = Path(filename).stem
     lst = filename.split(" ", 1)
     if len(lst) == 1:
         dt, comment = *lst, ""
@@ -135,10 +177,27 @@ def parse_filename(
         seconds,
     ) = [int(elem) if elem.isdigit() else elem for elem in dt.split("_")]
     dt_obj = datetime(year, month, day, hours, minutes, seconds)
-    voltage_pattern = r"[-+]?\d+(\.\d+)?( [VvВв])?|fresh"
-    time_pattern = r"\d+(?:mcs|ms|s)"
-    voltage = re.search(voltage_pattern, comment)
-    pulse_time = re.search(time_pattern, comment)
+
+    voltage_pattern = r"([-+]?\d+(\.\d+)?|fresh)(?: [VvВв])?"
+    voltage_match = re.search(voltage_pattern, comment)
+    voltage = voltage_match.group(1) if voltage_match else None
+    if voltage_match:
+        voltage = voltage_match.group(0)
+        if voltage != "fresh":
+            voltage = float(voltage)
+
+    time_pattern = r"(\d+) ?(mcs|ms|s)"
+    pulse_time_match = re.search(time_pattern, comment)
+    pulse_time = None
+    if pulse_time_match:
+        value, unit = pulse_time_match.groups()
+        if unit == "mcs":
+            pulse_time = timedelta(microseconds=int(value))
+        elif unit == "ms":
+            pulse_time = timedelta(milliseconds=int(value))
+        elif unit == "s":
+            pulse_time = timedelta(seconds=int(value))
+
     return {
         "datetime": dt_obj,
         "comment": comment,

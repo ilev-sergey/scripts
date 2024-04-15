@@ -11,4 +11,5 @@ docs/build
 __pycache__/
 .ipynb_checkpoints
 .venv
+.venv38
 .vscode

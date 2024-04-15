@@ -5,6 +5,7 @@ Works with response data that is received after fitting PFM data
 using `pfm.fit` module.
 """
 
+import gc
 import logging
 import shutil
 from enum import Enum
@@ -72,13 +73,31 @@ def process_all_data(
         elif cache_enum is Cache.USE and (results_subfolder / "results.npy").exists():
             results = load_results(results_subfolder / "results.npy")
         else:
-            data = get_data(datafile)
-            if data["scan_pfm"].shape == (0,):
-                logging.warning(f"skipping {datafile}: empty data")
-                continue
-            results = fit_data(**data)
-        for function in functions:
-            function(results, results_subfolder)
+            for data_dict in get_data(datafile):
+                if data_dict["data"] is None:
+                    logging.warning(f"skipping {datafile}: empty data")
+                    break
+                name, results = fit_data(**data_dict).values()
+                for function in functions:
+                    if name == "PFM":
+                        function(results, results_subfolder)  # save PFM in main folder
+                    else:
+                        function(
+                            results, results_subfolder / name
+                        )  # create subfolders for other modes
+
+            del data_dict
+            gc.collect()
+
+
+def delete_pictures(_, folder: Path) -> None:
+    """Delete all pictures in the given folder (in place).
+
+    :param _: Unused. For compatibility with `process_all_data`.
+    :param folder: The folder to delete pictures from.
+    """
+    for file in folder.glob("**/*.png"):
+        file.unlink()
 
 
 def flip_results(results_filename: Path) -> None:
@@ -97,33 +116,25 @@ def flip_results(results_filename: Path) -> None:
     logging.info(f"results mirrored, path: {results_filename}")
 
 
-def transform_phase(phase: NDArray[np.float64]) -> NDArray[np.float64]:
+def transform_phase(
+    phase: NDArray[np.float64],
+    shift: float = -1,
+    amplitude: float = np.pi / 2,
+    slope: float = 10,
+    final_shift: float = 0.3,
+) -> NDArray[np.float64]:
     """Transforms the input phase array using `Heaviside step function
     <https://en.wikipedia.org/wiki/Heaviside_step_function#Analytic_approximations>`_.
     Used for better interpretability of phase maps.
 
-    :param phase: Array of phase values
-    :return: An array of transformed phase values
+    :param phase: Array of phase values.
+    :param shift: Vertical shift of step function.
+    :param amplitude: Amplitude of step function.
+    :param slope: Slope of step function.
+    :param final_shift: Used to change colors for tranformed phase.
+    :return: An array of transformed phase values.
     """
-
-    a = -2.8 * 180 / np.pi
-    b = 2.40 * 180 / np.pi
-    c = 90
-    d = -180
-
-    k_1 = (d - c) / (b - a)
-    k_2 = (b - a) / (d - c)
-    m_1 = (c + d - k_1 * (a + b)) / 2
-    m_2 = (a + b - k_2 * (c + d)) / 2
-
-    phase *= 180 / np.pi
-    for i in range(phase.shape[0]):
-        for j in range(phase.shape[1]):
-            if a < phase[i, j] < b:
-                phase[i, j] = (90 * np.tanh((k_1 * phase[i, j] + m_1) / 5)) * k_2 + m_2
-    phase *= np.pi / 180
-
-    return phase
+    return amplitude * (np.tanh(slope * phase) + shift) + final_shift
 
 
 def get_domains_distribution(input_folder: Path) -> Dict[str, NDArray[np.float64]]:
@@ -191,7 +202,6 @@ def plot_hysteresis(
     plt.xlabel("Pulse voltage, V")
     plt.ylabel("Share of blue domains")
     plt.legend()
-    plt.savefig(output_folder / f"hysteresis {(sample)}.png", bbox_inches="tight")
 
 
 def copy_to_root(root_path: Path, name="phase.png") -> None:

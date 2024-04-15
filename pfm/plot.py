@@ -17,6 +17,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import mpl_toolkits.axes_grid1  # type: ignore
 import numpy as np
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from numpy.typing import NDArray
 from scipy.stats import norm  # type: ignore
 
@@ -32,6 +33,8 @@ def _plot_map(
     vmax: Union[float, None] = None,
     quantiles: Tuple[float, float] = (0.05, 0.95),
     cmap: Any = "gray",
+    size_nm: float = 800e-9,
+    scalebar: bool = True,
 ) -> None:
     """Plots a map of the given 2D data on the specified figure and
     axes. Used as as a helper function for other plot functions for
@@ -47,6 +50,21 @@ def _plot_map(
         Used only if **vmin** and **vmax** are not specified.
     :param cmap: The colormap to be used for plotting.
     """
+
+    def plot_scalebar(ax):
+        scalebar = AnchoredSizeBar(
+            ax.transData,
+            size=100e-9,
+            label="100 nm",
+            loc="lower right",
+            size_vertical=25e-9,
+            frameon=True,
+            color="black",
+            pad=0.2,
+            borderpad=0.3,
+        )
+        ax.add_artist(scalebar)
+
     vmin = vmin or float(np.quantile(data, quantiles[0]))
     vmax = vmax or float(np.quantile(data, quantiles[1]))
     image = ax.imshow(
@@ -56,9 +74,13 @@ def _plot_map(
         aspect="equal",
         vmin=vmin,
         vmax=vmax,
+        extent=(0, size_nm, 0, size_nm),
     )
     if title:
         ax.set_title(title)
+
+    if scalebar:
+        plot_scalebar(ax)
 
     # disable ticks and labels
     ax.tick_params(
@@ -93,7 +115,7 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
-    phase = transform_phase(np.angle(results["A"]))
+    phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
         fig,
@@ -104,8 +126,9 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
         vmin=-np.pi,
         vmax=np.pi,
     )
-    abs = np.abs(results["A"])
-    _plot_map(fig, axs[0, 0], abs, title="Abs")
+    key = "amplitude"
+    abs = np.abs(results[key])
+    _plot_map(fig, axs[0, 0], abs, title=key.capitalize())
     _plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
 
     fig.delaxes(axs[1, 1])
@@ -124,7 +147,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-    phase = transform_phase(np.angle(results["A"]))
+    phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
         fig,
@@ -135,8 +158,9 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
         vmin=-np.pi,
         vmax=np.pi,
     )
-    abs = np.abs(results["A"])
-    _plot_map(fig, axs[0], abs, title="Abs")
+    key = "amplitude"
+    abs = np.abs(results[key])
+    _plot_map(fig, axs[0], abs, title=key.capitalize())
 
     plt.tight_layout()
     fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
@@ -174,7 +198,7 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
 
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    phase = np.angle(results["A"] * np.exp(-1j * np.pi / 10))
+    phase = np.angle(results["amplitude"])
     save_image(phase)
 
     if transformed:
@@ -191,9 +215,10 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
     fig, ax = plt.subplots()
-    amplitude = np.abs(results["A"])
-    _plot_map(fig, ax, amplitude, title="Amplitude")
-    fig.savefig(output_folder / "amplitude.png", bbox_inches="tight")
+    key = "amplitude"
+    amplitude = np.abs(results[key])
+    _plot_map(fig, ax, amplitude, title=key.capitalize())
+    fig.savefig(output_folder / f"{key}.png", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -211,7 +236,7 @@ def plot_params(results: dict, output_folder: Path) -> None:
 
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
 
-    phase = np.angle(results["A"] * np.exp(0.1 * 1j * np.pi / 2))
+    phase = np.angle(results["amplitude"])
     _plot_map(
         fig,
         axs[0, 1],
@@ -222,11 +247,27 @@ def plot_params(results: dict, output_folder: Path) -> None:
         vmax=np.pi,
     )
 
-    _plot_map(fig, axs[0, 0], np.abs(results["A"]), title="Abs")
-    _plot_map(fig, axs[0, 2], np.abs(results["f0"]), title="Freq")
-    _plot_map(fig, axs[1, 0], np.abs(results["Q"]), title="Q", quantiles=(0.1, 0.9))
-    _plot_map(fig, axs[1, 1], np.abs(results["D"]), title="D", quantiles=(0.1, 0.9))
-    _plot_map(fig, axs[1, 2], np.abs(results["h"]), title="H", quantiles=(0.0, 1.0))
+    key = "amplitude"
+    _plot_map(fig, axs[0, 0], np.abs(results[key]), title=key.capitalize())
+    key = "resonant_frequency"
+    _plot_map(
+        fig,
+        axs[0, 2],
+        np.abs(results[key]),
+        title=key.capitalize(),
+    )
+    key = "Q_factor"
+    _plot_map(
+        fig,
+        axs[1, 0],
+        np.abs(results[key]),
+        title=key,
+        quantiles=(0.1, 0.9),
+    )
+    key = "D"
+    _plot_map(fig, axs[1, 1], np.abs(results[key]), title=key, quantiles=(0.1, 0.9))
+    key = "h"
+    _plot_map(fig, axs[1, 2], np.abs(results[key]), title=key, quantiles=(0.0, 1.0))
 
     plt.tight_layout()
     fig.savefig(output_folder / "params.png")
