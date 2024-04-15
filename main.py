@@ -21,9 +21,14 @@ def main():
         plot_amp_phase_log,
         save_results,
     ]
-    process_all_data(data_path, results_path, functions_to_apply, cache=Cache.SKIP)  # type: ignore
+    process_all_data(data_path, results_path, functions_to_apply, cache=Cache.IGNORE)  # type: ignore
 
 
 if __name__ == "__main__":
     pfm.pool.init()
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        from pfm.pool import pool
+
+        pool.terminate()
