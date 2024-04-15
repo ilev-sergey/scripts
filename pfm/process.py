@@ -86,8 +86,8 @@ def process_all_data(
                             results, results_subfolder / name
                         )  # create subfolders for other modes
 
-	            del data_dict
-	            gc.collect()
+                del data_dict
+                gc.collect()
 
 
 def delete_pictures(_, folder: Path) -> None:
