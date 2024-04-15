@@ -54,7 +54,7 @@ def get_mode(dataset: netCDF4.Dataset) -> Mode:
             :127
         ]  # spectrum of response at first point
         if (
-            spectrum.max() / np.quantile(spectrum, 0.99) > 5
+            spectrum.max() / np.quantile(spectrum, 0.99) > 4
         ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
             return Mode.SECOND_HARMONIC
 
