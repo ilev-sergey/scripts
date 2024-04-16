@@ -41,6 +41,52 @@ class Cache(Enum):
     """
 
 
+def process_datafile(
+    datafile_path: Path,
+    results_folder: Path | str,
+    functions: list[Callable],
+    cache: Cache | bool = Cache.SKIP,
+):
+    """Convenient interface for processing one datafile.
+
+    :param datafile_path: Path to the datafile.
+    :param results_folder: Parent folder to save results.
+    :param functions: Functions that should be applied
+        to processed data.
+    :param cache: If ``True`` tries to load cached results from
+        **results_folder**. If cache is not found, the data is processed
+        in the usual way. Other possible values are `Cache` enum
+        members (`Cache.IGNORE` equals to ``False``,
+        `Cache.USE` equals to ``True``).
+    """
+    results_subfolder = Path(
+        results_folder,
+        datafile_path.stem,
+    )
+    cache_enum = Cache(cache)
+    match cache_enum:  # checks only Mode.BASE PFM cache
+        case Cache.SKIP if (results_subfolder / "results.npy").exists():
+            logging.info(f"skipping {datafile_path}: results exist")
+        case Cache.USE if (results_subfolder / "results.npy").exists():
+            results = load_results(results_subfolder / "results.npy")
+        case Cache.IGNORE | _:
+            for data_dict in get_data(datafile_path):
+                if data_dict["data"] is None:
+                    logging.warning(f"skipping {datafile_path}: empty data")
+                    break
+                name, results = fit_data(**data_dict).values()
+                for function in functions:
+                    if name == "PFM":
+                        function(results, results_subfolder)  # save PFM in main folder
+                    else:
+                        function(
+                            results, results_subfolder / name
+                        )  # create subfolders for other modes
+
+                del data_dict
+                gc.collect()
+
+
 def process_all_data(
     data_folder: Path,
     results_folder: Path | str,
@@ -64,33 +110,8 @@ def process_all_data(
         results_subfolder = Path(
             results_folder,
             *(datafile.relative_to(data_folder).parts[:-1]),
-            datafile.stem,
         )
-        cache_enum = Cache(cache)
-        match cache_enum:  # checks only Mode.BASE PFM cache
-            case Cache.SKIP if (results_subfolder / "results.npy").exists():
-                logging.info(f"skipping {datafile}: results exist")
-                continue
-            case Cache.USE if (results_subfolder / "results.npy").exists():
-                results = load_results(results_subfolder / "results.npy")
-            case Cache.IGNORE | _:
-                for data_dict in get_data(datafile):
-                    if data_dict["data"] is None:
-                        logging.warning(f"skipping {datafile}: empty data")
-                        break
-                    name, results = fit_data(**data_dict).values()
-                    for function in functions:
-                        if name == "PFM":
-                            function(
-                                results, results_subfolder
-                            )  # save PFM in main folder
-                        else:
-                            function(
-                                results, results_subfolder / name
-                            )  # create subfolders for other modes
-
-                    del data_dict
-                    gc.collect()
+        process_datafile(datafile, results_subfolder, functions, cache)
 
 
 def delete_pictures(_, folder: Path) -> None:
