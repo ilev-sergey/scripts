@@ -7,6 +7,7 @@ used for further analysis of the ferroelectric material properties.
 """
 
 import logging
+import re
 from functools import partial
 from typing import Any
 
@@ -26,6 +27,7 @@ def fit_line(
     bin_count,
     central_freq,
     freq_span,
+    avg_count,
     software_version,
     scan,
 ):
@@ -60,7 +62,7 @@ def fit_line(
             result_in_point = (A, s0, D, h, maxresp, displacement, piezomodule)
 
         else:
-            result_in_point = _vfit(fs, data_to_fit)
+            result_in_point = _vfit(fs, data_to_fit, avg_count)
 
         results_line.append(result_in_point)
 
@@ -72,8 +74,7 @@ def fit_data(
     calibration_data: NDArray[np.complex64],
     scan: str,
     software_version: Mode,
-    central_freq: float = 0.62e6,  # TODO: get from metadata
-    freq_span: float = 195312.5,
+    metadata: dict[str, Any],
     **kwargs: NDArray[np.complex64],
 ) -> dict[str, str | dict[str, NDArray[np.complex64]]]:
     r"""Fits the given scan data at each point using `_vfit` to obtain response data.
@@ -94,6 +95,12 @@ def fit_data(
     logging.debug(
         f"size: {size_x}x{size_y}pt, {bin_count=}, {scan=}, {software_version=}"
     )
+
+    central_freq = (
+        float(re.search(r"(\d+\.?\d*) MHz", metadata["center_freq"]).group(1)) * 1e6
+    )
+    freq_span = float(re.search(r"(\d+\.?\d*)KHz", metadata["span"]).group(1)) * 1e3
+    pfm_avg = int(metadata["pfm_avg"])
 
     # Initialization
     keys = [
@@ -117,6 +124,7 @@ def fit_data(
         bin_count=bin_count,
         central_freq=central_freq,
         freq_span=freq_span,
+        avg_count=pfm_avg,
         software_version=software_version,
         scan=scan,
     )
@@ -140,7 +148,10 @@ def fit_data(
 
 
 def _vfit(
-    freq_span: NDArray[np.float64], data: NDArray[np.complex64], plot: bool = False
+    freq_span: NDArray[np.float64],
+    data: NDArray[np.complex64],
+    avg_count: int,
+    plot: bool = False,
 ) -> Any:
     """Uses `vector fitting <https://scikit-rf.readthedocs.io/en/latest/tutorials/VectorFitting.html>`_
     algorithm for fitting BE PFM data in a single point
@@ -203,7 +214,6 @@ def _vfit(
 
     s0, c, D, h = iter(pole=s0, s=s, data=dfilt, n=niters)
 
-    Avg = 70
     sensitivity = 2900
     volts_in_bin = 0.5 / 46.0
 
@@ -215,8 +225,8 @@ def _vfit(
         + D
         + h * 1j * np.imag(s0)
     )
-    displacement = maxresp * sensitivity / (Avg * Q)
-    piezomodule = maxresp * sensitivity / (Avg * Q * volts_in_bin)
+    displacement = maxresp * sensitivity / (avg_count * Q)
+    piezomodule = maxresp * sensitivity / (avg_count * Q * volts_in_bin)
 
     if plot:
         mfs = freq_span

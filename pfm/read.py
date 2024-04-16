@@ -104,6 +104,7 @@ def get_data(
             "data": np.array(scan),
             "calibration_data": calibrations,
             "software_version": software_version,
+            "metadata": {key: dataset.getncattr(key) for key in dataset.ncattrs()},
         }
 
     logging.info(f"loading data from {data_filename}")
