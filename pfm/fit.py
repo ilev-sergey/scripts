@@ -21,20 +21,52 @@ from tqdm import tqdm  # type: ignore
 from pfm.read import Mode
 
 
+def get_response(s0: complex, c: complex, D: int, h: int, avg_count: int):
+    sensitivity = 2900
+    volts_in_bin = 0.5 / 46.0
+
+    Q = 2 * abs(np.imag(s0) / np.real(s0))
+    A = c * np.imag(s0)
+    maxresp = abs(
+        (c / (1j * np.imag(s0) - s0))
+        + np.conj(c) / (1j * np.imag(s0) - np.conj(s0))
+        + D
+        + h * 1j * np.imag(s0)
+    )
+    displacement = maxresp * sensitivity / (avg_count * Q)
+    piezomodule = maxresp * sensitivity / (avg_count * Q * volts_in_bin)
+
+    return {
+        "amplitude": A,
+        "resonant_frequency": abs(np.imag(s0)),
+        "Q_factor": abs(np.imag(s0) / np.real(s0)),
+        "D": D,
+        "h": h,
+        "max_response": maxresp,
+        "displacement": displacement,
+        "piezomodule": piezomodule,
+        "s0": s0,
+    }
+
+
 def fit_line(
-    line_data,
-    calibration_data,
-    bin_count,
-    central_freq,
-    freq_span,
-    avg_count,
-    software_version,
-    scan,
-):
+    line_data: NDArray[np.complex64],
+    calibration_data: NDArray[np.complex64],
+    bin_count: int,
+    central_freq: float,
+    freq_span: float,
+    avg_count: int,
+    software_version: Mode,
+    scan: str,
+) -> dict[str, NDArray[np.complex64]]:
     """Fits the given line data using `_vfit` to obtain response data.
     Used as a task for `Pool`.
     """
-    results_line = []
+    response_keys = get_response(1 + 1j, 1j, 1, 1, 1).keys()  # dummy call to get keys
+    results_line = {
+        key: np.full((line_data.shape[0]), np.nan, dtype="complex_")
+        for key in response_keys
+    }
     fs = np.linspace(
         central_freq - freq_span / 2, central_freq + freq_span / 2, bin_count
     )
@@ -51,20 +83,18 @@ def fit_line(
         if (
             software_version == Mode.SECOND_HARMONIC and scan == "PFM"
         ):  # skip fitting for second harmonic
+            response = {key: 0.0 for key in response_keys}  # fill with zeros
+            response["s0"] = 1e-10
+
             second_harm_bin = np.abs(data_to_fit).argmax()
-            A = data_to_fit[second_harm_bin]
-            s0 = 0 + 1e-10
-            D = 0
-            h = 0
-            maxresp = 0
-            displacement = 0
-            piezomodule = 0
-            result_in_point = (A, s0, D, h, maxresp, displacement, piezomodule)
+            response["amplitude"] = data_to_fit[second_harm_bin]
 
         else:
-            result_in_point = _vfit(fs, data_to_fit, avg_count)
+            fit_results = _vfit(fs, data_to_fit)
+            response = get_response(**fit_results, avg_count=avg_count)
 
-        results_line.append(result_in_point)
+        for key in response.keys():
+            results_line[key][row] = response[key]
 
     return results_line
 
@@ -102,20 +132,6 @@ def fit_data(
     freq_span = float(re.search(r"(\d+\.?\d*)KHz", metadata["span"]).group(1)) * 1e3
     pfm_avg = int(metadata["pfm_avg"])
 
-    # Initialization
-    keys = [
-        "amplitude",
-        "resonant_frequency",
-        "Q_factor",
-        "D",
-        "h",
-        "max_response",
-        "displacement",
-        "piezomodule",
-        "s0",
-    ]
-    results = {key: np.full((size_x, size_y), np.nan, dtype="complex_") for key in keys}
-
     from pfm.pool import pool
 
     task = partial(
@@ -129,18 +145,8 @@ def fit_data(
         scan=scan,
     )
     a = list(tqdm(pool.imap(task, data), total=size_x, desc="progress"))
-    a = np.array(a)
-
-    A, s0, D, h, maxresp, displacement, piezomodule = np.split(a, 7, axis=2)
-    results["amplitude"] = A
-    results["resonant_frequency"] = abs(np.imag(s0))
-    results["Q_factor"] = abs(np.imag(s0) / np.real(s0))
-    results["D"] = D
-    results["h"] = h
-    results["max_response"] = maxresp
-    results["displacement"] = displacement
-    results["piezomodule"] = piezomodule
-    results["s0"] = s0
+    # transform from list of dicts to dict of arrays
+    results = {k: np.array([dic[k] for dic in a]) for k in a[0]}
 
     logging.info("fitting is done")
 
@@ -150,7 +156,6 @@ def fit_data(
 def _vfit(
     freq_span: NDArray[np.float64],
     data: NDArray[np.complex64],
-    avg_count: int,
     plot: bool = False,
 ) -> Any:
     """Uses `vector fitting <https://scikit-rf.readthedocs.io/en/latest/tutorials/VectorFitting.html>`_
@@ -166,7 +171,10 @@ def _vfit(
     """
 
     def iter(
-        pole: complex, s: NDArray[np.complex64], data: NDArray[np.complex64], n: int = 1
+        pole: np.complex64,
+        s: NDArray[np.complex64],
+        data: NDArray[np.complex64],
+        n: int = 1,
     ):
         """Performs vector fitting iteration
 
@@ -206,27 +214,13 @@ def _vfit(
 
     s = 1j * freq_span
     fc = np.mean(freq_span)
-    s0 = [-fc / 100 + 1j * fc]
+    s0 = -fc / 100 + 1j * fc
 
     niters = 30
     fb, fa = butter(8, 0.1)
     dfilt = filtfilt(fb, fa, data, padlen=3 * (max(len(fb), len(fa)) - 1))
 
     s0, c, D, h = iter(pole=s0, s=s, data=dfilt, n=niters)
-
-    sensitivity = 2900
-    volts_in_bin = 0.5 / 46.0
-
-    Q = 2 * abs(np.imag(s0) / np.real(s0))
-    A = c * np.imag(s0)
-    maxresp = abs(
-        (c / (1j * np.imag(s0) - s0))
-        + np.conj(c) / (1j * np.imag(s0) - np.conj(s0))
-        + D
-        + h * 1j * np.imag(s0)
-    )
-    displacement = maxresp * sensitivity / (avg_count * Q)
-    piezomodule = maxresp * sensitivity / (avg_count * Q * volts_in_bin)
 
     if plot:
         mfs = freq_span
@@ -279,4 +273,4 @@ def _vfit(
         plt.clf()  # clear previous results
         plt.show()
 
-    return A, s0, D, h, maxresp, displacement, piezomodule
+    return {"s0": s0, "c": c, "D": D, "h": h}
