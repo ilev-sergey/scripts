@@ -29,7 +29,7 @@ class Mode(StrEnum):
     """
     Default BE PFM version.
     """
-    AFAM_EHNANCED = "AFAM"
+    AFAM_ENHANCED = "AFAM"
     """
     Sped-up version that uses AFAM enhanced resonanse tracking.
     """
@@ -58,7 +58,7 @@ def get_mode(dataset: netCDF4.Dataset) -> Mode:
         ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
             return Mode.SECOND_HARMONIC
 
-        return Mode.AFAM_EHNANCED
+        return Mode.AFAM_ENHANCED
 
     if "data_pfm_lf_tors" in data_keys:
         return Mode.DFL_AND_LF
@@ -127,7 +127,7 @@ def get_data(
     yield {"scan": "PFM"} | get_scan(pfm, calibrations_pfm)
 
     match software_version:
-        case Mode.AFAM_EHNANCED | Mode.SECOND_HARMONIC:
+        case Mode.AFAM_ENHANCED | Mode.SECOND_HARMONIC:
             calibrations_afam = calibrations.variables["afam"][:]
             afam = dataset.groups["data_afam"].variables["waveform"]
             freq = dataset.groups["data_freq"]

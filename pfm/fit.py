@@ -116,7 +116,7 @@ def fit_data(
     """
     logging.info(f"starting {scan} data fitting...")
 
-    if software_version in (Mode.AFAM_EHNANCED, Mode.SECOND_HARMONIC) and scan == "PFM":
+    if software_version in (Mode.AFAM_ENHANCED, Mode.SECOND_HARMONIC) and scan == "PFM":
         bin_count = 127 * 2  # Number of frequency bins
     else:
         bin_count = 510 * 2
