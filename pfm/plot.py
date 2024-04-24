@@ -202,6 +202,48 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
     if transformed:
         save_image(transform_phase(phase), img_name="phase (transformed).png")
 
+def plot_dfl_lf_combinations(
+    dfl_phase: NDArray[np.float64],
+    lf_phase: NDArray[np.float64],
+    output_folder: Path = Path("."),
+    plot_all: bool = True,
+) -> None:
+    dfl_phase = transform_phase(dfl_phase)
+    lf_phase = transform_phase(lf_phase)
+    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+    dfl_pos_lf_pos = ((lf_phase > 0) + (dfl_phase > 0)).astype(int)
+    dfl_pos_lf_neg = ((lf_phase < 0) + (dfl_phase > 0)).astype(int)
+    dfl_neg_lf_pos = ((lf_phase > 0) + (dfl_phase < 0)).astype(int)
+    dfl_neg_lf_neg = ((lf_phase < 0) + (dfl_phase < 0)).astype(int)
+
+    _plot_map(dfl_pos_lf_pos, cmap="binary", fig=plt.gcf(), ax=axs[0, 0])
+    _plot_map(dfl_pos_lf_neg, cmap="binary", fig=plt.gcf(), ax=axs[0, 1])
+    _plot_map(dfl_neg_lf_pos, cmap="binary", fig=plt.gcf(), ax=axs[1, 0])
+    _plot_map(dfl_neg_lf_neg, cmap="binary", fig=plt.gcf(), ax=axs[1, 1])
+
+    axs[0, 0].set_title("DFL+, LF+")
+    axs[0, 1].set_title("DFL+, LF-")
+    axs[1, 0].set_title("DFL-, LF+")
+    axs[1, 1].set_title("DFL-, LF-")
+
+    fig.savefig(output_folder / "phase_combinations.png", bbox_inches="tight")
+    plt.close(fig)
+
+    if plot_all:
+        fig, ax = plt.subplots()
+        result = (
+            dfl_pos_lf_pos * 10
+            + dfl_pos_lf_neg * 5
+            + dfl_neg_lf_pos * (-5)
+            + dfl_neg_lf_neg * (-10)
+        ).astype(np.float64)
+        _plot_map(result, fig=plt.gcf(), ax=ax, cmap="rainbow")
+
+        fig.savefig(output_folder / "all_phases_at_once.png", bbox_inches="tight")
+        plt.close(fig)
+
+
 
 def plot_amplitude(results: dict, output_folder: Path) -> None:
     """Generates a figure with map of amplitude from fitting results
