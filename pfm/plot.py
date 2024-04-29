@@ -70,8 +70,6 @@ def _plot_map(
     image = ax.imshow(
         data,
         cmap=cmap,
-        origin="lower",
-        aspect="equal",
         vmin=vmin,
         vmax=vmax,
         extent=(0, size_nm, 0, size_nm / data.shape[1] * data.shape[0]),
@@ -94,14 +92,10 @@ def _plot_map(
         labelleft=False,
     )
 
-    # 1e5 -> 10^5 on top of colorbar
-    formatter = mpl.ticker.ScalarFormatter(useMathText=True)
-    formatter.set_powerlimits((0, 0))
-
     # colorbar close to plot, same size
     divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
     cax = divider.append_axes("bottom", size="5%", pad=0.05)
-    fig.colorbar(image, cax=cax, orientation="horizontal", format=formatter)
+    fig.colorbar(image, cax=cax, orientation="horizontal")
 
 
 def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
@@ -114,7 +108,8 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+    xsize, ysize = mpl.rcParams["figure.figsize"]
+    fig, axs = plt.subplots(2, 2, figsize=(xsize * 2, ysize * 2))
     phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
@@ -131,7 +126,6 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     _plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
 
     fig.delaxes(axs[1, 1])
-    plt.tight_layout()
     fig.savefig(output_folder / "amp_phase_log.png")
     plt.close(fig)
 
@@ -145,7 +139,8 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+    xsize, ysize = mpl.rcParams["figure.figsize"]
+    fig, axs = plt.subplots(2, 1, figsize=(xsize, ysize * 2))
     phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
@@ -160,8 +155,7 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     abs = np.abs(results[key := "amplitude"])
     _plot_map(fig, axs[0], abs, title=key.capitalize())
 
-    plt.tight_layout()
-    fig.savefig(output_folder / "amp_phase.png", bbox_inches="tight")
+    fig.savefig(output_folder / "amp_phase.png")
     plt.close(fig)
 
 
@@ -191,7 +185,7 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
             vmin=-np.pi,
             vmax=np.pi,
         )
-        fig.savefig(output_folder / img_name, bbox_inches="tight")
+        fig.savefig(output_folder / img_name)
         plt.close(fig)
 
     Path.mkdir(output_folder, parents=True, exist_ok=True)
@@ -210,7 +204,9 @@ def plot_dfl_lf_combinations(
 ) -> None:
     dfl_phase = transform_phase(dfl_phase)
     lf_phase = transform_phase(lf_phase)
-    fig, axs = plt.subplots(2, 2, figsize=(10, 10))
+
+    xsize, ysize = mpl.rcParams["figure.figsize"]
+    fig, axs = plt.subplots(2, 2, figsize=(xsize * 2, ysize * 2))
 
     dfl_pos_lf_pos = ((lf_phase > 0) + (dfl_phase > 0)).astype(int)
     dfl_pos_lf_neg = ((lf_phase < 0) + (dfl_phase > 0)).astype(int)
@@ -227,7 +223,7 @@ def plot_dfl_lf_combinations(
     axs[1, 0].set_title("DFL-, LF+")
     axs[1, 1].set_title("DFL-, LF-")
 
-    fig.savefig(output_folder / "phase_combinations.png", bbox_inches="tight")
+    fig.savefig(output_folder / "phase_combinations.png")
     plt.close(fig)
 
     if plot_all:
@@ -240,7 +236,7 @@ def plot_dfl_lf_combinations(
         ).astype(np.float64)
         _plot_map(result, fig=plt.gcf(), ax=ax, cmap="rainbow")
 
-        fig.savefig(output_folder / "all_phases_at_once.png", bbox_inches="tight")
+        fig.savefig(output_folder / "all_phases_at_once.png")
         plt.close(fig)
 
 
@@ -257,7 +253,7 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
     fig, ax = plt.subplots()
     amplitude = np.abs(results[key := "amplitude"])
     _plot_map(fig, ax, amplitude, title=key.capitalize())
-    fig.savefig(output_folder / f"{key}.png", bbox_inches="tight")
+    fig.savefig(output_folder / f"{key}.png")
     plt.close(fig)
 
 
@@ -271,9 +267,8 @@ def plot_params(results: dict, output_folder: Path) -> None:
     """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    plt.rcParams.update({"font.size": 14})
-
-    fig, axs = plt.subplots(2, 3, figsize=(15, 10))
+    xsize, ysize = mpl.rcParams["figure.figsize"]
+    fig, axs = plt.subplots(2, 3, figsize=(xsize * 3, ysize * 2))
 
     phase = np.angle(results["amplitude"])
     _plot_map(
@@ -309,7 +304,6 @@ def plot_params(results: dict, output_folder: Path) -> None:
         fig, axs[1, 2], np.abs(results[key := "h"]), title=key, quantiles=(0.0, 1.0)
     )
 
-    plt.tight_layout()
     fig.savefig(output_folder / "params.png")
     plt.close(fig)
 
@@ -326,9 +320,8 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
     """
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
-    plt.rcParams.update({"font.size": 14})
-
-    fig, axs = plt.subplots(1, 2, figsize=(25, 10))
+    xsize, ysize = mpl.rcParams["figure.figsize"]
+    fig, axs = plt.subplots(1, 2, figsize=(xsize * 2, ysize))
 
     piezomodule = np.abs(results["piezomodule"])
     _plot_map(fig, axs[0], piezomodule, title="Piezomodule (pm/V)")
@@ -360,6 +353,5 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
         legend_text = f"mean displacement = {mean_displ} pm/V, std = {std_displ} pm/V"
         axs[1, 1].legend([legend_text], loc="upper left")
 
-    plt.tight_layout()
     fig.savefig(output_folder / "piezomodule.png")
     plt.close(fig)

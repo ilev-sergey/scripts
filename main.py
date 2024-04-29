@@ -1,6 +1,8 @@
 import logging
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 import pfm.pool
 from pfm.plot import plot_amp_phase, plot_amp_phase_log, plot_params, plot_piezo
 from pfm.process import (
@@ -17,6 +19,7 @@ logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 
 def main():
+    plt.style.use("mpl_styles/default.mplstyle")
     data_path = Path("data")
     results_path = Path("results")
     functions_to_apply = [
