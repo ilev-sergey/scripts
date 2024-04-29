@@ -74,7 +74,7 @@ def _plot_map(
         aspect="equal",
         vmin=vmin,
         vmax=vmax,
-        extent=(0, size_nm, 0, size_nm),
+        extent=(0, size_nm, 0, size_nm / data.shape[1] * data.shape[0]),
     )
     if title:
         ax.set_title(title)
