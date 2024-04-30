@@ -94,7 +94,7 @@ def _plot_map(
 
     # colorbar close to plot, same size
     divider = mpl_toolkits.axes_grid1.make_axes_locatable(ax)
-    cax = divider.append_axes("bottom", size="5%", pad=0.05)
+    cax = divider.append_axes("bottom", size=0.10, pad=0.05)
     fig.colorbar(image, cax=cax, orientation="horizontal")
 
 
