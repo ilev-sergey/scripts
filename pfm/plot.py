@@ -103,7 +103,9 @@ def _plot_map(
     fig.colorbar(image, cax=cax, orientation="horizontal")
 
 
-def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
+def plot_amp_phase_log(
+    results: dict, output_folder: Path, interactive: bool = False
+) -> None:
     """Generates a figure with maps of amplitude, phase
     and log of amplitude from fitting results and
     saves it in the specified output folder.
@@ -141,11 +143,17 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     )
 
     fig.delaxes(axs[1, 1])
-    fig.savefig(output_folder / "amp_phase_log.png")
-    plt.close(fig)
+
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / "amp_phase_log.png")
+        plt.close(fig)
 
 
-def plot_amp_phase(results: dict, output_folder: Path) -> None:
+def plot_amp_phase(
+    results: dict, output_folder: Path, interactive: bool = False
+) -> None:
     """Generates a figure with maps of amplitude and phase from
     fitting results and saves it in the specified output folder.
 
@@ -175,11 +183,19 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
         title=key.capitalize(),
     )
 
-    fig.savefig(output_folder / "amp_phase.png")
-    plt.close(fig)
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / "amp_phase.png")
+        plt.close(fig)
 
 
-def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> None:
+def plot_phase(
+    results: dict,
+    output_folder: Path,
+    transformed: bool = True,
+    interactive: bool = False,
+) -> None:
     """Generates a figure with map of phase from fitting results and
     saves it in the specified output folder. Optionally also saves
     the transformed phase.
@@ -205,8 +221,12 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
             vmin=-np.pi,
             vmax=np.pi,
         )
-        fig.savefig(output_folder / img_name)
-        plt.close(fig)
+
+        if interactive:
+            plt.show()
+        else:
+            fig.savefig(output_folder / img_name)
+            plt.close(fig)
 
     Path.mkdir(output_folder, parents=True, exist_ok=True)
 
@@ -221,6 +241,7 @@ def plot_dfl_lf_combinations(
     lf_phase: NDArray[np.float64],
     output_folder: Path = Path("."),
     plot_all: bool = True,
+    interactive: bool = False,
 ) -> None:
     dfl_phase = transform_phase(dfl_phase)
     lf_phase = transform_phase(lf_phase)
@@ -243,8 +264,11 @@ def plot_dfl_lf_combinations(
     axs[1, 0].set_title("DFL-, LF+")
     axs[1, 1].set_title("DFL-, LF-")
 
-    fig.savefig(output_folder / "phase_combinations.png")
-    plt.close(fig)
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / "phase_combinations.png")
+        plt.close(fig)
 
     if plot_all:
         fig, ax = plt.subplots()
@@ -256,12 +280,17 @@ def plot_dfl_lf_combinations(
         ).astype(np.float64)
         _plot_map(result, fig=plt.gcf(), ax=ax, cmap="rainbow")
 
-        fig.savefig(output_folder / "all_phases_at_once.png")
+        if interactive:
+            plt.show()
+        else:
+            fig.savefig(output_folder / "all_phases_at_once.png")
+            plt.close(fig)
         plt.close(fig)
 
 
-
-def plot_amplitude(results: dict, output_folder: Path) -> None:
+def plot_amplitude(
+    results: dict, output_folder: Path, interactive: bool = False
+) -> None:
     """Generates a figure with map of amplitude from fitting results
     and saves it in the specified output folder.
 
@@ -278,11 +307,15 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
         ax=ax,
         title=key.capitalize(),
     )
-    fig.savefig(output_folder / f"{key}.png")
-    plt.close(fig)
+
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / f"{key}.png")
+        plt.close(fig)
 
 
-def plot_params(results: dict, output_folder: Path) -> None:
+def plot_params(results: dict, output_folder: Path, interactive: bool = False) -> None:
     """Generates a figure with maps of amplitude, phase, contact
     frequency, quality factor and vector fitting parameters (D, H)
     from fitting results and saves it in the specified output folder.
@@ -340,11 +373,19 @@ def plot_params(results: dict, output_folder: Path) -> None:
         quantiles=(0.0, 1.0),
     )
 
-    fig.savefig(output_folder / "params.png")
-    plt.close(fig)
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / "params.png")
+        plt.close(fig)
 
 
-def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) -> None:
+def plot_piezo(
+    results: dict,
+    output_folder: Path,
+    include_displ: bool = False,
+    interactive: bool = False,
+) -> None:
     """Generates a figure with map of piezomodule and distribution of
     piezomodule from fitting results and saves it in the specified
     output folder. Optionally also plots the displacement map and
@@ -399,5 +440,8 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
         legend_text = f"mean displacement = {mean_displ} pm/V, std = {std_displ} pm/V"
         axs[1, 1].legend([legend_text], loc="upper left")
 
-    fig.savefig(output_folder / "piezomodule.png")
-    plt.close(fig)
+    if interactive:
+        plt.show()
+    else:
+        fig.savefig(output_folder / "piezomodule.png")
+        plt.close(fig)
