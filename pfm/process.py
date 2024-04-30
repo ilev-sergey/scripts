@@ -68,7 +68,14 @@ def process_datafile(
         case Cache.SKIP if (results_subfolder / "results.npy").exists():
             logging.info(f"skipping {datafile_path}: results exist")
         case Cache.USE if (results_subfolder / "results.npy").exists():
-            results = load_results(results_subfolder / "results.npy")
+            for name, results in load_results(results_subfolder):
+                for function in functions:
+                    if name == "PFM":
+                        function(results, results_subfolder)  # save PFM in main folder
+                    else:
+                        function(
+                            results, results_subfolder / name
+                        )  # create subfolders for other modes
         case Cache.IGNORE | _:
             for data_dict in get_data(datafile_path):
                 if data_dict["data"] is None:

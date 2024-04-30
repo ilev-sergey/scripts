@@ -142,15 +142,21 @@ def get_data(
     logging.info("data is loaded")
 
 
-def load_results(results_filename: Path | str) -> dict[str, NDArray[np.complex64]]:
+def load_results(
+    results_path: Path | str,
+) -> Generator[tuple[str, dict[str, NDArray[np.complex64]]], None, None]:
     """Loads cached fitting results from the file.
 
     :param results_filename: Path to the cached results file.
     :return: Dictionary containing scan data.
     """
-    results = np.load(results_filename, allow_pickle=True).item()
-    logging.info(f"loaded cached results from {results_filename}")
-    return results
+    results_path = Path(results_path)
+    for results_filename in results_path.glob("**/*.npy"):
+        if (name := results_filename.parent.parts[-1]) not in ("PFM LF", "AFAM"):
+            name = "PFM"
+        results = np.load(results_filename, allow_pickle=True).item()
+        logging.info(f"loaded cached results from {results_filename}")
+        yield name, results
 
 
 def parse_filename(
