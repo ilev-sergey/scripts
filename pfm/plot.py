@@ -25,8 +25,6 @@ from pfm.process import transform_phase
 
 
 def _plot_map(
-    fig: mpl.figure.Figure,
-    ax: mpl.axes.Axes,
     data: NDArray[np.float64],
     title: str | None = None,
     vmin: float | None = None,
@@ -35,6 +33,8 @@ def _plot_map(
     cmap: Any = "grey",
     size_nm: float = 800e-9,
     scalebar: bool = True,
+    fig: mpl.figure.Figure | None = None,
+    ax: mpl.axes.Axes | None = None,
 ) -> None:
     """Plots a map of the given 2D data on the specified figure and
     axes. Used as as a helper function for other plot functions for
@@ -64,6 +64,11 @@ def _plot_map(
             borderpad=0.3,
         )
         ax.add_artist(scalebar)
+
+    if fig is None:
+        fig = plt.gcf()
+    if ax is None:
+        ax = plt.gca()
 
     vmin = vmin or float(np.quantile(data, quantiles[0]))
     vmax = vmax or float(np.quantile(data, quantiles[1]))
@@ -113,17 +118,27 @@ def plot_amp_phase_log(results: dict, output_folder: Path) -> None:
     phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
-        fig,
-        axs[1, 0],
         phase,
+        fig=fig,
+        ax=axs[1, 0],
         title="Phase",
         cmap=cmocean.cm.phase,
         vmin=-np.pi,
         vmax=np.pi,
     )
     abs = np.abs(results[key := "amplitude"])
-    _plot_map(fig, axs[0, 0], abs, title=key.capitalize())
-    _plot_map(fig, axs[0, 1], np.log10(abs), title=r"$log_{10}$ Abs")
+    _plot_map(
+        abs,
+        fig=fig,
+        ax=axs[0, 0],
+        title=key.capitalize(),
+    )
+    _plot_map(
+        np.log10(abs),
+        fig=fig,
+        ax=axs[0, 1],
+        title=r"$log_{10}$ Abs",
+    )
 
     fig.delaxes(axs[1, 1])
     fig.savefig(output_folder / "amp_phase_log.png")
@@ -144,16 +159,21 @@ def plot_amp_phase(results: dict, output_folder: Path) -> None:
     phase = transform_phase(np.angle(results["amplitude"]))
 
     _plot_map(
-        fig,
-        axs[1],
         phase,
+        fig=fig,
+        ax=axs[1],
         title="Phase",
         cmap=cmocean.cm.phase,
         vmin=-np.pi,
         vmax=np.pi,
     )
     abs = np.abs(results[key := "amplitude"])
-    _plot_map(fig, axs[0], abs, title=key.capitalize())
+    _plot_map(
+        abs,
+        fig=fig,
+        ax=axs[0],
+        title=key.capitalize(),
+    )
 
     fig.savefig(output_folder / "amp_phase.png")
     plt.close(fig)
@@ -177,9 +197,9 @@ def plot_phase(results: dict, output_folder: Path, transformed: bool = True) -> 
         """
         fig, ax = plt.subplots()
         _plot_map(
-            fig,
-            ax,
             phase,
+            fig=fig,
+            ax=ax,
             title="Phase",
             cmap=cmocean.cm.phase,
             vmin=-np.pi,
@@ -252,7 +272,12 @@ def plot_amplitude(results: dict, output_folder: Path) -> None:
 
     fig, ax = plt.subplots()
     amplitude = np.abs(results[key := "amplitude"])
-    _plot_map(fig, ax, amplitude, title=key.capitalize())
+    _plot_map(
+        amplitude,
+        fig=fig,
+        ax=ax,
+        title=key.capitalize(),
+    )
     fig.savefig(output_folder / f"{key}.png")
     plt.close(fig)
 
@@ -272,9 +297,9 @@ def plot_params(results: dict, output_folder: Path) -> None:
 
     phase = np.angle(results["amplitude"])
     _plot_map(
-        fig,
-        axs[0, 1],
         phase,
+        fig=fig,
+        ax=axs[0, 1],
         title="Phase",
         cmap=cmocean.cm.phase,
         vmin=-np.pi,
@@ -282,26 +307,37 @@ def plot_params(results: dict, output_folder: Path) -> None:
     )
 
     _plot_map(
-        fig, axs[0, 0], np.abs(results[key := "amplitude"]), title=key.capitalize()
-    )
-    _plot_map(
-        fig,
-        axs[0, 2],
-        np.abs(results[key := "resonant_frequency"]),
+        np.abs(results[key := "amplitude"]),
+        fig=fig,
+        ax=axs[0, 0],
         title=key.capitalize(),
     )
     _plot_map(
-        fig,
-        axs[1, 0],
+        np.abs(results[key := "resonant_frequency"]),
+        fig=fig,
+        ax=axs[0, 2],
+        title=key.capitalize(),
+    )
+    _plot_map(
         np.abs(results[key := "Q_factor"]),
+        fig=fig,
+        ax=axs[1, 0],
         title=key,
         quantiles=(0.1, 0.9),
     )
     _plot_map(
-        fig, axs[1, 1], np.abs(results[key := "D"]), title=key, quantiles=(0.1, 0.9)
+        np.abs(results[key := "D"]),
+        fig=fig,
+        ax=axs[1, 1],
+        title=key,
+        quantiles=(0.1, 0.9),
     )
     _plot_map(
-        fig, axs[1, 2], np.abs(results[key := "h"]), title=key, quantiles=(0.0, 1.0)
+        np.abs(results[key := "h"]),
+        fig=fig,
+        ax=axs[1, 2],
+        title=key,
+        quantiles=(0.0, 1.0),
     )
 
     fig.savefig(output_folder / "params.png")
@@ -324,7 +360,12 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
     fig, axs = plt.subplots(1, 2, figsize=(xsize * 2, ysize))
 
     piezomodule = np.abs(results["piezomodule"])
-    _plot_map(fig, axs[0], piezomodule, title="Piezomodule (pm/V)")
+    _plot_map(
+        piezomodule,
+        fig=fig,
+        ax=axs[0],
+        title="Piezomodule (pm/V)",
+    )
 
     D33 = piezomodule.flatten()
     mean_D33 = round(np.mean(D33), 3)
@@ -343,7 +384,12 @@ def plot_piezo(results: dict, output_folder: Path, include_displ: bool = False) 
 
     if include_displ:
         displacement = np.abs(results["displacement"])
-        _plot_map(fig, axs[1, 0], displacement, title="Low-frequency displacement [pm]")
+        _plot_map(
+            displacement,
+            fig=fig,
+            ax=axs[1, 0],
+            title="Low-frequency displacement [pm]",
+        )
 
         mean_displ = round(np.mean(displacement), 3)
         std_displ = round(np.std(displacement), 3)
