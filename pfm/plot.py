@@ -60,7 +60,7 @@ def _plot_map(
             size_vertical=25e-9,
             frameon=True,
             color="black",
-            pad=0.2,
+            pad=0.25,
             borderpad=0.3,
         )
         ax.add_artist(scalebar)
@@ -414,7 +414,7 @@ def plot_piezo(
 
     axs[1].hist(D33, bins=25, density=True, alpha=0.6, color="b", edgecolor="black")
     axs[1].set_title("Distribution of piezomodule")
-    legend_text = f"mean piezomodule = {mean_D33} pm/V, std = {std_D33} pm/V"
+    legend_text = f"mean = {mean_D33} pm/V,\nstd = {std_D33} pm/V"
     axs[1].legend([legend_text])
 
     mu, std = norm.fit(D33)
