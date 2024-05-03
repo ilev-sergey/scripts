@@ -102,6 +102,8 @@ def _plot_map(
     cax = divider.append_axes("bottom", size=0.10, pad=0.05)
     fig.colorbar(image, cax=cax, orientation="horizontal")
 
+    return image
+
 
 def plot_amp_phase_log(
     results: dict, output_folder: Path, interactive: bool = False
@@ -151,8 +153,100 @@ def plot_amp_phase_log(
         plt.close(fig)
 
 
+class InteractivePlotter:
+    def __init__(self, data, results, map, phase_img):
+        print("init")
+        self.data = data
+        self.line = None
+        self.first_click = True
+        self.map = map
+        print(extent := phase_img.get_extent())
+        self.extent = extent
+        self.results = results
+        self.fspan = np.linspace(0.44e6 - 100e3 / 2, 0.44e6 + 100e3 / 2, 1020)
+
+        # Connect the mouse click event to the onclick method
+        map.canvas.mpl_connect("button_press_event", self.onclick)
+
+    def plot_data(self, x, y):
+        print("plot")
+        # Ensure x and y are within the bounds of the data array
+        if 0 <= x < self.data.shape[0] and 0 <= y < self.data.shape[1]:
+            print("Updated")
+            self.amp_line.set_ydata(np.abs(self.data[x, y, :]))
+            self.phase_line.set_ydata(np.angle(self.data[x, y, :]))
+            self.plot_fit(x, y)
+            for ax in self.axs:
+                ax.set_title(f"Plot of data at position ({x}, {y})")
+                ax.legend([f"Data at ({x}, {y})"])
+                ax.relim()
+                ax.autoscale_view()
+            self.fig.canvas.draw_idle()  # Redraw the figure (for Qt GUI)
+        else:
+            print("Selected coordinates are out of bounds!")
+
+    def plot_fit(self, x, y):
+        s0, c, D, h = [self.results[key][x, y] for key in ["s0", "c", "D", "h"]]
+        ms = 1j * self.fspan
+
+        modfun = lambda s: (c / (s - s0) + c / (s - np.conj(s0)) + D + h * s)
+        resp = np.array([modfun(si) for si in ms])
+        self.fit_amp_line.set_ydata(np.abs(resp))
+        self.fit_phase_line.set_ydata(np.angle(resp))
+
+    def init_fit(self, x, y):
+        s0, c, D, h = [self.results[key][x, y] for key in ["s0", "c", "D", "h"]]
+        ms = 1j * self.fspan
+
+        modfun = lambda s: (c / (s - s0) + c / (s - np.conj(s0)) + D + h * s)
+        resp = np.array([modfun(si) for si in ms])
+        shift = 0.14e5
+        shift = 0
+        (self.fit_amp_line,) = self.axs[0].plot(self.fspan + shift, np.abs(resp))
+        (self.fit_phase_line,) = self.axs[1].plot(self.fspan + shift, np.angle(resp))
+
+    def init_plot(self, x, y):
+        print("first click")
+        if 0 <= x < self.data.shape[0] and 0 <= y < self.data.shape[1]:
+            xsize, ysize = mpl.rcParams["figure.figsize"]
+            self.fig, self.axs = plt.subplots(2, 1, figsize=(xsize, ysize * 2))
+            (self.amp_line,) = self.axs[0].plot(
+                self.fspan, np.abs(self.data[x, y, :]), label=f"Data at ({x}, {y})"
+            )
+            (self.phase_line,) = self.axs[1].plot(
+                self.fspan, np.angle(self.data[x, y, :]), label=f"Data at ({x}, {y})"
+            )
+            self.init_fit(x, y)
+            for ax in self.axs:
+                ax.set_title(f"Plot of data at position ({x}, {y})")
+                ax.set_xlabel("Index")
+                ax.set_ylabel("Value")
+                ax.legend()
+                ax.grid(True)
+            plt.show()
+
+        else:
+            print("Selected coordinates are out of bounds!")
+
+    def onclick(self, event):
+        print("onclick", event)
+        ix, iy = int(event.xdata / self.extent[1] * self.data.shape[1]), int(
+            event.ydata / self.extent[3] * self.data.shape[0]
+        )
+        print(ix, iy)
+        if self.first_click:
+            self.init_plot(ix, iy)
+            self.first_click = False
+        else:
+            print(ix, iy)
+            self.plot_data(ix, iy)
+
+
 def plot_amp_phase(
-    results: dict, output_folder: Path, interactive: bool = False
+    results: dict,
+    output_folder: Path,
+    interactive: bool = False,
+    data: NDArray[np.complex64] | None = None,
 ) -> None:
     """Generates a figure with maps of amplitude and phase from
     fitting results and saves it in the specified output folder.
@@ -166,7 +260,7 @@ def plot_amp_phase(
     fig, axs = plt.subplots(2, 1, figsize=(xsize, ysize * 2))
     phase = transform_phase(np.angle(results["amplitude"]))
 
-    _plot_map(
+    phase_img = _plot_map(
         phase,
         fig=fig,
         ax=axs[1],
@@ -184,7 +278,10 @@ def plot_amp_phase(
     )
 
     if interactive:
-        plt.show()
+        if data is not None:
+            plotter = InteractivePlotter(data, results, fig, phase_img)
+            plt.show()
+
     else:
         fig.savefig(output_folder / "amp_phase.png")
         plt.close(fig)

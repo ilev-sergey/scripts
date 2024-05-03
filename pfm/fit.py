@@ -46,6 +46,7 @@ def get_response(s0: complex, c: complex, D: int, h: int, avg_count: int):
         "displacement": displacement,
         "piezomodule": piezomodule,
         "s0": s0,
+        "c": c,
     }
 
 
