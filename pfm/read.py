@@ -86,23 +86,9 @@ def get_data(
         :return: Dictionary containing arrays of complex scan data, calibration data and
             software mode used during the measurement
         """
-        rows = scan_data.shape[0]
-        cols = scan_data.shape[1]
-        bins = scan_data.shape[2]
-
-        real_calibrations = np.array(scan_cal[:, 0], dtype=np.float64)
-        imag_calibrations = np.array(scan_cal[:, 1], dtype=np.float64)
-        calibrations = real_calibrations + 1j * imag_calibrations
-
-        scan = np.zeros((rows, cols, bins), dtype=np.complex64)
-        for row in trange(rows, desc="progress"):
-            for col in range(cols):
-                data_real = scan_data[row, col, :, 0]
-                data_imag = scan_data[row, col, :, 1]
-                scan[row, col] = data_real + 1j * data_imag
         return {
-            "data": np.array(scan),
-            "calibration_data": calibrations,
+            "data": scan_data,
+            "calibration_data": scan_cal,
             "software_version": software_version,
             "metadata": {key: dataset.getncattr(key) for key in dataset.ncattrs()},
         }

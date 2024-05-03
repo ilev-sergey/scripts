@@ -18,6 +18,7 @@ from matplotlib import pyplot as plt
 from numpy.typing import NDArray
 
 from pfm.fit import fit_data
+from pfm.preprocess import preprocess_data
 from pfm.read import get_data, load_results
 
 
@@ -81,6 +82,7 @@ def process_datafile(
                 if data_dict["data"] is None:
                     logging.warning(f"skipping {datafile_path}: empty data")
                     break
+                data_dict = preprocess_data(**data_dict)
                 name, results = fit_data(**data_dict).values()
                 for function in functions:
                     if name == "PFM":

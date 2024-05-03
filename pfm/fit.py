@@ -51,7 +51,6 @@ def get_response(s0: complex, c: complex, D: int, h: int, avg_count: int):
 
 def fit_line(
     line_data: NDArray[np.complex64],
-    calibration_data: NDArray[np.complex64],
     bin_count: int,
     central_freq: float,
     freq_span: float,
@@ -73,24 +72,17 @@ def fit_line(
     for row in range(line_data.shape[0]):
         data_in_point = line_data[row, :]
 
-        data_to_fit = fft(data_in_point)
-        data_to_fit = data_to_fit / calibration_data  # type: ignore
-        data_to_fit = np.flip(data_to_fit)
-        data_to_fit = np.concatenate(
-            (data_to_fit[-bin_count // 2 :], data_to_fit[: bin_count // 2])
-        )
-
         if (
             software_version == Mode.SECOND_HARMONIC and scan == "PFM"
         ):  # skip fitting for second harmonic
             response = {key: 0.0 for key in response_keys}  # fill with zeros
             response["s0"] = 1e-10
 
-            second_harm_bin = np.abs(data_to_fit).argmax()
-            response["amplitude"] = data_to_fit[second_harm_bin]
+            second_harm_bin = np.abs(data_in_point).argmax()
+            response["amplitude"] = data_in_point[second_harm_bin]
 
         else:
-            fit_results = _vfit(fs, data_to_fit)
+            fit_results = _vfit(fs, data_in_point)
             response = get_response(**fit_results, avg_count=avg_count)
 
         for key in response.keys():
@@ -101,10 +93,10 @@ def fit_line(
 
 def fit_data(
     data: NDArray[np.complex64],
-    calibration_data: NDArray[np.complex64],
-    scan: str,
     software_version: Mode,
     metadata: dict[str, Any],
+    scan: str,
+    bin_count: int,
     **kwargs: NDArray[np.complex64],
 ) -> dict[str, str | dict[str, NDArray[np.complex64]]]:
     r"""Fits the given scan data at each point using `_vfit` to obtain response data.
@@ -115,11 +107,6 @@ def fit_data(
     :return: A dictionary containing response data for each point in the scan data.
     """
     logging.info(f"starting {scan} data fitting...")
-
-    if software_version in (Mode.AFAM_ENHANCED, Mode.SECOND_HARMONIC) and scan == "PFM":
-        bin_count = 127 * 2  # Number of frequency bins
-    else:
-        bin_count = 510 * 2
 
     size_x, size_y = data.shape[:2]
     logging.debug(
@@ -136,7 +123,6 @@ def fit_data(
 
     task = partial(
         fit_line,
-        calibration_data=calibration_data,
         bin_count=bin_count,
         central_freq=central_freq,
         freq_span=freq_span,
