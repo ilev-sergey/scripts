@@ -1,9 +1,17 @@
 import logging
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
 import pfm.pool
 from pfm.plot import plot_amp_phase, plot_amp_phase_log, plot_params, plot_piezo
-from pfm.process import Cache, delete_pictures, process_all_data, save_results
+from pfm.process import (
+    Cache,
+    delete_pictures,
+    process_all_data,
+    process_datafile,
+    save_results,
+)
 
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # to remove debug messages from imported modules
@@ -12,6 +20,7 @@ logging.getLogger("PIL").setLevel(logging.WARNING)
 
 
 def main():
+    plt.style.use("mpl_styles/default.mplstyle")
     data_path = Path("data")
     results_path = Path("results")
     functions_to_apply = [

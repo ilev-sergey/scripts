@@ -11,7 +11,7 @@ from collections.abc import KeysView
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Union
+from typing import Dict, Generator, List, Tuple, Union
 
 import netCDF4  # type: ignore
 import numpy as np
@@ -29,7 +29,7 @@ class Mode(Enum):
     """
     Default BE PFM version.
     """
-    AFAM_EHNANCED = 1
+    AFAM_ENHANCED = 1
     """
     Sped-up version that uses AFAM enhanced resonanse tracking.
     """
@@ -49,16 +49,22 @@ def get_mode(dataset: netCDF4.Dataset) -> Mode:
     if "data_freq" in data_keys:
         # check second harmonic
         data = dataset.groups["data_pfm"].variables["waveform"]
+        data_in_pt = data[:, :, :, 0] + 1j * data[:, :, :, 1]
         calibrations = dataset.groups["calibrations"].variables["pfm"]
-        spectrum = np.abs(np.fft.fft(data[0, 0, :, 0]) / calibrations[:, 0])[
-            :127
-        ]  # spectrum of response at first point
-        if (
-            spectrum.max() / np.quantile(spectrum, 0.99) > 4
-        ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
+        calibration_in_pt = calibrations[:, 0] + 1j * calibrations[:, 1]
+
+        abs_response = np.abs(
+            np.fft.fft(data_in_pt) / calibration_in_pt
+        )  # spectrum of response at first point
+        mask = np.logical_and(
+            abs_response[:, :, 4] > abs_response[:, :, 3],
+            abs_response[:, :, 4] > abs_response[:, :, 5],
+        )  # mask where 4th bin is higher than 3rd and 5th
+        # if 4th bin is higher in more than half of the bins, it is a second harmonic
+        if np.count_nonzero(mask) > mask.size / 2:
             return Mode.SECOND_HARMONIC
 
-        return Mode.AFAM_EHNANCED
+        return Mode.AFAM_ENHANCED
 
     if "data_pfm_lf_tors" in data_keys:
         return Mode.DFL_AND_LF
@@ -86,24 +92,11 @@ def get_data(
         :return: Dictionary containing arrays of complex scan data, calibration data and
             software mode used during the measurement
         """
-        rows = scan_data.shape[0]
-        cols = scan_data.shape[1]
-        bins = scan_data.shape[2]
-
-        real_calibrations = np.array(scan_cal[:, 0], dtype=np.float64)
-        imag_calibrations = np.array(scan_cal[:, 1], dtype=np.float64)
-        calibrations = real_calibrations + 1j * imag_calibrations
-
-        scan = np.zeros((rows, cols, bins), dtype=np.complex64)
-        for row in trange(rows, desc="progress"):
-            for col in range(cols):
-                data_real = scan_data[row, col, :, 0]
-                data_imag = scan_data[row, col, :, 1]
-                scan[row, col] = data_real + 1j * data_imag
         return {
-            "data": np.array(scan),
-            "calibration_data": calibrations,
+            "data": scan_data,
+            "calibration_data": scan_cal,
             "software_version": software_version,
+            "metadata": {key: dataset.getncattr(key) for key in dataset.ncattrs()},
         }
 
     logging.info(f"loading data from {data_filename}")
@@ -125,7 +118,7 @@ def get_data(
     calibrations_pfm = calibrations.variables["pfm"][:]
     yield {**get_scan(pfm, calibrations_pfm), "scan": "PFM"}
 
-    if software_version in (Mode.AFAM_EHNANCED, Mode.SECOND_HARMONIC):
+    if software_version in (Mode.AFAM_ENHANCED, Mode.SECOND_HARMONIC):
         calibrations_afam = calibrations.variables["afam"][:]
         afam = dataset.groups["data_afam"].variables["waveform"]
         freq = dataset.groups["data_freq"]
@@ -139,16 +132,20 @@ def get_data(
 
 
 def load_results(
-    results_filename: Union[Path, str]
-) -> Dict[str, NDArray[np.complex64]]:
+    results_path: Union[Path, str]
+) -> Generator[Tuple[str, Dict[str, NDArray[np.complex64]]], None, None]:
     """Loads cached fitting results from the file.
 
     :param results_filename: Path to the cached results file.
     :return: Dictionary containing scan data.
     """
-    results = np.load(results_filename, allow_pickle=True).item()
-    logging.info(f"loaded cached results from {results_filename}")
-    return results
+    results_path = Path(results_path)
+    for results_filename in results_path.glob("**/*.npy"):
+        if (name := results_filename.parent.parts[-1]) not in ("PFM LF", "AFAM"):
+            name = "PFM"
+        results = np.load(results_filename, allow_pickle=True).item()
+        logging.info(f"loaded cached results from {results_filename}")
+        yield name, results
 
 
 def parse_filename(

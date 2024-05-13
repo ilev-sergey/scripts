@@ -1,0 +1,42 @@
+figure.figsize: 2.75, 2.5
+figure.dpi: 250
+font.size: 6
+
+# 'Dark2' colormap
+# [f"{mpl.colors.rgb2hex(color)}" for color in mpl.colormaps['Dark2'].colors]
+axes.prop_cycle: cycler(color=["#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d","#666666"])
+
+axes.titlepad: 3
+axes.formatter.use_mathtext: True
+axes.formatter.limits: -3, 3
+legend.frameon: False
+
+xtick.direction: in
+xtick.major.size: 3
+xtick.major.width: 0.5
+xtick.minor.size: 1.5
+xtick.minor.width: 0.5
+xtick.minor.visible: True
+xtick.top: True
+
+ytick.direction: in
+ytick.major.size: 3
+ytick.major.width: 0.5
+ytick.minor.size: 1.5
+ytick.minor.width: 0.5
+ytick.minor.visible: True
+ytick.right: True
+
+axes.linewidth: 0.5
+grid.linewidth: 0.5
+lines.linewidth: 1
+lines.markersize: 3
+
+savefig.bbox: tight
+savefig.dpi: 600
+savefig.pad_inches: 0.01
+savefig.transparent: False
+savefig.format: svg
+
+image.aspect: equal
+image.origin: lower
