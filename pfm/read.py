@@ -49,19 +49,13 @@ def get_mode(dataset: netCDF4.Dataset) -> Mode:
     if "data_freq" in data_keys:
         # check second harmonic
         data = dataset.groups["data_pfm"].variables["waveform"]
-        data_in_pt = data[:, :, :, 0] + 1j * data[:, :, :, 1]
         calibrations = dataset.groups["calibrations"].variables["pfm"]
-        calibration_in_pt = calibrations[:, 0] + 1j * calibrations[:, 1]
-
-        abs_response = np.abs(
-            np.fft.fft(data_in_pt) / calibration_in_pt
-        )  # spectrum of response at first point
-        mask = np.logical_and(
-            abs_response[:, :, 4] > abs_response[:, :, 3],
-            abs_response[:, :, 4] > abs_response[:, :, 5],
-        )  # mask where 4th bin is higher than 3rd and 5th
-        # if 4th bin is higher in more than half of the bins, it is a second harmonic
-        if np.count_nonzero(mask) > mask.size / 2:
+        spectrum = np.abs(np.fft.fft(data[0, 0, :, 0]) / calibrations[:, 0])[
+            :127
+        ]  # spectrum of response at first point
+        if (
+            spectrum.max() / np.quantile(spectrum, 0.99) > 4
+        ):  # if amplitude at one frequency is much greater than the rest, it is probably second harmonic, ~2-3 for basic BE PFM
             return Mode.SECOND_HARMONIC
 
         return Mode.AFAM_ENHANCED
